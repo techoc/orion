@@ -1,11 +1,16 @@
 spring:
   cloud:
     gateway:
-      loadbalancer:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "https://docs.spring.io"
+            allowedMethods:
+              - GET
 
       routes:
         - id: add_params
-          uri: lb:https://httpbin.org
+          uri: https://httpbin.org
           #          uri: http://localhost:2015
           predicates:
             - Path=/post
@@ -15,6 +20,12 @@ spring:
               args:
                 name: add-params
                 value: add-params,add-params2
+
+        - id: option
+          uri: https://httpbin.org
+          predicates:
+            - Method=OPTIONS
+
 gateway:
   access-log:
     enabled: true

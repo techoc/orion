@@ -1,14 +1,12 @@
 package cn.techoc.oriongateway.core.loggging;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.*;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
@@ -19,10 +17,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 
 import static org.mockito.Mockito.*;
-import static org.powermock.api.mockito.PowerMockito.*;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({AccessLogGlobalFilter.class, LoggerFactory.class})
 public class AccessLogGlobalFilterTest {
 
     @InjectMocks
@@ -36,21 +31,20 @@ public class AccessLogGlobalFilterTest {
 
     private AutoCloseable closeable;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         closeable = MockitoAnnotations.openMocks(this);
         when(props.getPattern()).thenReturn(
-                "$remote_addr - $remote_user [$time_local] \"$request\" $status $body_bytes_sent " +
-                        "\"$http_referer\" \"$http_user_agent\" \"$http_x_forwarded_for\" $upstream_addr " +
+                "$remote_addr - $remote_user [$time_local] \\\"$request\\\" $status $body_bytes_sent " +
+                        "\\\"$http_referer\\\" \\\"$http_user_agent\\\" \\\"$http_x_forwarded_for\\\" $upstream_addr " +
                         "ups_resp_time: $upstream_response_time request_time: $request_time"
         );
 
-        // Mock LoggerFactory.getLogger() 静态方法
-        mockStatic(LoggerFactory.class);
-        when(LoggerFactory.getLogger(AccessLogGlobalFilter.class)).thenReturn(logger);
+        // 现在可以使用带logger参数的构造函数，便于测试
+        filter = new AccessLogGlobalFilter(props, logger);
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         closeable.close();
     }
@@ -62,10 +56,11 @@ public class AccessLogGlobalFilterTest {
     public void testLogAccess_NormalCase() {
         // 构造请求
         MockServerHttpRequest request = MockServerHttpRequest.get("/test")
-                .remoteAddress(InetSocketAddress.createUnresolved("192.168.1.1", 8080))
+                .remoteAddress(new InetSocketAddress("localhost", 8080))
                 .header("Referer", "https://example.com")
                 .header("User-Agent", "Mozilla/5.0")
                 .header("X-Forwarded-For", "10.0.0.1")
+                .header("Authorization", "Basic b3Jpb246b3Jpb24=")
                 .build();
 
         // 构造响应
