@@ -24,20 +24,20 @@ import java.net.URI;
  * - 上游响应时间（UPSTREAM_RESPONSE_TIME）：从请求被转发到上游服务器开始，到上游服务器响应完成的时间
  */
 @Component
-public class AccessLogGlobalFilter implements WebFilter {
+public class AccessLogWebFilter implements WebFilter {
 
     private final AccessLogProperties props;
     private final Logger log;
 
-    public AccessLogGlobalFilter() {
-        this(new AccessLogProperties(), LoggerFactory.getLogger(AccessLogGlobalFilter.class));
+    public AccessLogWebFilter() {
+        this(new AccessLogProperties(), LoggerFactory.getLogger(AccessLogWebFilter.class));
     }
 
-    public AccessLogGlobalFilter(AccessLogProperties props) {
-        this(props, LoggerFactory.getLogger(AccessLogGlobalFilter.class));
+    public AccessLogWebFilter(AccessLogProperties props) {
+        this(props, LoggerFactory.getLogger(AccessLogWebFilter.class));
     }
 
-    public AccessLogGlobalFilter(AccessLogProperties props, Logger log) {
+    public AccessLogWebFilter(AccessLogProperties props, Logger log) {
         this.props = props;
         this.log = log;
     }
@@ -52,16 +52,16 @@ public class AccessLogGlobalFilter implements WebFilter {
         long requestStartTime = System.currentTimeMillis();
 
         // 在请求处理前设置上游响应时间开始时间
-        exchange.getAttributes().put("upstream_start_time", System.currentTimeMillis());
+//        exchange.getAttributes().put("upstream_start_time", System.currentTimeMillis());
 
         return chain.filter(exchange)
                 .doOnSuccess(aVoid -> {
                     // 请求成功处理后记录上游响应结束时间
-                    exchange.getAttributes().put("upstream_end_time", System.currentTimeMillis());
+//                    exchange.getAttributes().put("upstream_end_time", System.currentTimeMillis());
                 })
                 .doOnError(throwable -> {
                     // 请求处理出错时也记录上游响应结束时间
-                    exchange.getAttributes().put("upstream_end_time", System.currentTimeMillis());
+//                    exchange.getAttributes().put("upstream_end_time", System.currentTimeMillis());
                 })
                 .doFinally(signalType -> {
                     try {
@@ -89,8 +89,8 @@ public class AccessLogGlobalFilter implements WebFilter {
         double totalRequestTime = (requestEndTime - requestStartTime) / 1000.0;
 
         // 计算上游响应时间（从转发到上游开始到收到上游响应结束的时间）
-        Long upstreamStartTime = exchange.getAttribute("upstream_start_time");
-        Long upstreamEndTime = exchange.getAttribute("upstream_end_time");
+        Long upstreamStartTime = exchange.getAttribute(AccessLogConstants.UPSTREAM_START_TIME_ATTR);
+        Long upstreamEndTime = exchange.getAttribute(AccessLogConstants.UPSTREAM_END_TIME_ATTR);
 
         double upstreamResponseTime;
         if (upstreamStartTime != null && upstreamEndTime != null) {

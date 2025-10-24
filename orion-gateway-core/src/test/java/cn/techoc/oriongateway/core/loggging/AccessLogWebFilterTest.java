@@ -18,10 +18,10 @@ import java.net.URI;
 
 import static org.mockito.Mockito.*;
 
-public class AccessLogGlobalFilterTest {
+public class AccessLogWebFilterTest {
 
     @InjectMocks
-    private AccessLogGlobalFilter filter;
+    private AccessLogWebFilter filter;
 
     @Mock
     private AccessLogProperties props;
@@ -41,7 +41,7 @@ public class AccessLogGlobalFilterTest {
         );
 
         // 现在可以使用带logger参数的构造函数，便于测试
-        filter = new AccessLogGlobalFilter(props, logger);
+        filter = new AccessLogWebFilter(props, logger);
     }
 
     @AfterEach
