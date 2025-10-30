@@ -1,6 +1,7 @@
 package cn.techoc.oriongateway.core.loggging;
 
 
+import cn.techoc.oriongateway.core.Constants;
 import lombok.var;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,19 +51,7 @@ public class AccessLogWebFilter implements WebFilter {
 
         // 记录请求开始时间（总时间）
         long requestStartTime = System.currentTimeMillis();
-
-        // 在请求处理前设置上游响应时间开始时间
-//        exchange.getAttributes().put("upstream_start_time", System.currentTimeMillis());
-
         return chain.filter(exchange)
-                .doOnSuccess(aVoid -> {
-                    // 请求成功处理后记录上游响应结束时间
-//                    exchange.getAttributes().put("upstream_end_time", System.currentTimeMillis());
-                })
-                .doOnError(throwable -> {
-                    // 请求处理出错时也记录上游响应结束时间
-//                    exchange.getAttributes().put("upstream_end_time", System.currentTimeMillis());
-                })
                 .doFinally(signalType -> {
                     try {
                         logAccess(exchange, requestStartTime);
@@ -82,22 +71,36 @@ public class AccessLogWebFilter implements WebFilter {
 
         // 获取上游目标地址（在 RoutingFilter 阶段会被设置）
         URI routeUri = exchange.getAttribute(ServerWebExchangeUtils.GATEWAY_REQUEST_URL_ATTR);
-        String upstreamAddr = routeUri != null ? routeUri.getHost() + ":" + routeUri.getPort() : "-";
+
+        String upstreamAddr;
+
+        // 如果routeUri不为空，尝试获取其IP地址
+        if (routeUri != null) {
+            try {
+                InetAddress inetAddress = InetAddress.getByName(routeUri.getHost());
+                upstreamAddr = inetAddress.getHostAddress() + ":" + routeUri.getPort();
+            } catch (Exception e) {
+                // 如果无法解析IP地址，则保持原有的主机名和端口
+                upstreamAddr = routeUri.getHost() + ":" + routeUri.getPort();
+            }
+        } else {
+            upstreamAddr = "-";
+        }
 
         // 计算总请求时间
         long requestEndTime = System.currentTimeMillis();
         double totalRequestTime = (requestEndTime - requestStartTime) / 1000.0;
 
         // 计算上游响应时间（从转发到上游开始到收到上游响应结束的时间）
-        Long upstreamStartTime = exchange.getAttribute(AccessLogConstants.UPSTREAM_START_TIME_ATTR);
-        Long upstreamEndTime = exchange.getAttribute(AccessLogConstants.UPSTREAM_END_TIME_ATTR);
+        Long upstreamStartTime = exchange.getAttribute(Constants.UPSTREAM_START_TIME_ATTR);
+        Long upstreamEndTime = exchange.getAttribute(Constants.UPSTREAM_END_TIME_ATTR);
 
         double upstreamResponseTime;
         if (upstreamStartTime != null && upstreamEndTime != null) {
             upstreamResponseTime = (upstreamEndTime - upstreamStartTime) / 1000.0;
         } else {
-            // 如果无法获取上游时间，则使用总时间作为后备
-            upstreamResponseTime = totalRequestTime;
+            // 如果无法获取上游时间，则使用 -1
+            upstreamResponseTime = -1.0;
         }
 
         var response = exchange.getResponse();
@@ -120,7 +123,7 @@ public class AccessLogWebFilter implements WebFilter {
             }
         }
         vars.put(AccessLogVariable.REMOTE_USER, remoteUser);
-        vars.put(AccessLogVariable.TIME_LOCAL, AccessLogFormatter.now());
+        vars.put(AccessLogVariable.TIME_LOCAL, AccessLogFormatter.now(props.getZoneId()));
         vars.put(AccessLogVariable.REQUEST, request.getMethodValue() + " " + request.getURI().getRawPath());
         vars.put(AccessLogVariable.STATUS, getStatus(response));
         vars.put(AccessLogVariable.BODY_BYTES_SENT, response.getHeaders().getContentLength());

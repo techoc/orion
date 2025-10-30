@@ -1,5 +1,9 @@
 package cn.techoc.oriongateway.core.loggging;
 
+import org.springframework.util.StringUtils;
+
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.EnumMap;
 import java.util.Map;
@@ -29,6 +33,19 @@ public class AccessLogFormatter {
 
     public static String now() {
         return DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z")
-                .format(java.time.ZonedDateTime.now());
+                .format(ZonedDateTime.now());
+    }
+
+    public static String now(String zoneId) {
+        if (StringUtils.hasText(zoneId)) {
+            try {
+                ZoneId zone = ZoneId.of(zoneId);
+                return DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z")
+                        .format(ZonedDateTime.now(zone));
+            } catch (Exception e) {
+                return now();
+            }
+        }
+        return now();
     }
 }

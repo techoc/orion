@@ -33,7 +33,7 @@
     </root>
 
     <!-- 单独为访问日志打 logger（不混业务日志） -->
-    <logger name="cn.techoc.oriongateway.core.loggging.AccessLogGlobalFilter" level="INFO" additivity="false">
+    <logger name="cn.techoc.oriongateway.core.loggging.AccessLogWebFilter" level="INFO" additivity="false">
         <appender-ref ref="ACCESS_CONSOLE"/>
         <appender-ref ref="ACCESS_FILE"/>
     </logger>

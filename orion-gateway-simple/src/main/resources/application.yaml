@@ -1,33 +1,81 @@
 spring:
   cloud:
+    discovery:
+      client:
+        simple:
+          instances:
+            httpbin:
+              - uri: https://httpbin.org/
     gateway:
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowedOrigins: "https://docs.spring.io"
-            allowedMethods:
-              - GET
+      httpclient:
+        pool:
+          max-idle-time: 12
+          max-life-time: 30
+      #      globalcors:
+      #        cors-configurations:
+      #          '[/**]':
+      #            allowedOrigins:
+      #              - "https://docs.spring.io"
+      #              - "http://localhost:63342"
+      #            allowedMethods:
+      #              - GET
+      #              - POST
+      #              - OPTIONS
 
       routes:
         - id: add_params
           uri: https://httpbin.org
+          #          uri: http://127.0.0.1:8081
           #          uri: http://localhost:2015
           predicates:
             - Path=/post
-            - Header=add-params
+          #            - Header=add-params
           filters:
             - name: AddRequestParameter
               args:
                 name: add-params
                 value: add-params,add-params2
+            - name: AddRequestHeader
+              args:
+                name: aaa
+                value: aaa
+            - RemoveResponseHeader=Access-Control-Allow-Origin
+            - RemoveResponseHeader=Access-Control-Allow-Methods
+            - RemoveResponseHeader=Access-Control-Allow-Headers
 
-        - id: option
-          uri: https://httpbin.org
+        #        - id: option
+        #          uri: https://httpbin.org
+        #          predicates:
+        #            - Method=OPTIONS
+
+        - id: delay
+          uri: lb://httpbin
           predicates:
-            - Method=OPTIONS
+            - Path=/delay/{delay}
+
+        - id: hello_world
+          uri: http://127.0.0.1:8081
+          predicates:
+            - Path=/demo/hello
 
 gateway:
   access-log:
-    enabled: true
+    enabled: false
     pattern: "$remote_addr - $remote_user [$time_local] \"$request\" $status $body_bytes_sent \"$http_referer\" \"$http_user_agent\" \"$http_x_forwarded_for\" $upstream_addr ups_resp_time: $upstream_response_time request_time: $request_time"
-#    pattern: '$remote_addr - - [$time_local] "$request_method $uri" $status "$referer" "$user_agent" $request_time s upstream: $upstream_addr ($upstream_time s)'
+  #    pattern: '$remote_addr - - [$time_local] "$request_method $uri" $status "$referer" "$user_agent" $request_time s upstream: $upstream_addr ($upstream_time s)'
+  race-tracing:
+    enabled: true
+    trace-request-prefix: true
+    trace-request-suffix: true
+    trace-response-prefix: true
+    trace-response-suffix: true
+    trace-request-body: true
+    trace-response-body: true
+    trace-request-params: true
+    trace-request-headers: true
+    trace-response-headers: true
+    max-body-size: 10240 # 10KB
+    exclude-headers:
+      - authorization
+      - cookie
+      - set-cookie
