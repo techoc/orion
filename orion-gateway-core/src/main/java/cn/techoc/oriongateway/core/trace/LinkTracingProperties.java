@@ -108,4 +108,5 @@ public class LinkTracingProperties {
      * 默认值：false
      */
     private boolean groupLogsByPhase = false;
+
 }

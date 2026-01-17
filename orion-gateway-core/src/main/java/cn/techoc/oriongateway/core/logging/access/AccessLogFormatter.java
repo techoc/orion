@@ -1,4 +1,4 @@
-package cn.techoc.oriongateway.core.loggging;
+package cn.techoc.oriongateway.core.logging.access;
 
 import org.springframework.util.StringUtils;
 
@@ -13,8 +13,7 @@ public class AccessLogFormatter {
     public static String format(String pattern, Map<String, Object> vars) {
         String log = pattern;
         for (Map.Entry<String, Object> entry : vars.entrySet()) {
-            log = log.replace("$" + entry.getKey(),
-                    entry.getValue() == null ? "-" : String.valueOf(entry.getValue()));
+            log = log.replace("$" + entry.getKey(), entry.getValue() == null ? "-" : String.valueOf(entry.getValue()));
         }
         return log;
     }
@@ -25,23 +24,22 @@ public class AccessLogFormatter {
     public static String format(String pattern, EnumMap<AccessLogVariable, Object> vars) {
         String log = pattern;
         for (Map.Entry<AccessLogVariable, Object> entry : vars.entrySet()) {
-            log = log.replace(entry.getKey().getPatternPlaceholder(),
+            log = log.replace(
+                    entry.getKey().getPatternPlaceholder(),
                     entry.getValue() == null ? "-" : String.valueOf(entry.getValue()));
         }
         return log;
     }
 
     public static String now() {
-        return DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z")
-                .format(ZonedDateTime.now());
+        return DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z").format(ZonedDateTime.now());
     }
 
     public static String now(String zoneId) {
         if (StringUtils.hasText(zoneId)) {
             try {
                 ZoneId zone = ZoneId.of(zoneId);
-                return DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z")
-                        .format(ZonedDateTime.now(zone));
+                return DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z").format(ZonedDateTime.now(zone));
             } catch (Exception e) {
                 return now();
             }

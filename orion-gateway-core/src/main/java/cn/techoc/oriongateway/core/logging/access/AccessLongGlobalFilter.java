@@ -1,4 +1,4 @@
-package cn.techoc.oriongateway.core.loggging;
+package cn.techoc.oriongateway.core.logging.access;
 
 import cn.techoc.oriongateway.core.Constants;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -13,11 +13,10 @@ public class AccessLongGlobalFilter implements GlobalFilter, Ordered {
         // 在路由前记录开始时间
         exchange.getAttributes().put(Constants.UPSTREAM_START_TIME_ATTR, System.currentTimeMillis());
 
-        return chain.filter(exchange)
-                .doOnTerminate(() -> {
-                    // 在响应完成后记录结束时间
-                    exchange.getAttributes().put(Constants.UPSTREAM_END_TIME_ATTR, System.currentTimeMillis());
-                });
+        return chain.filter(exchange).doOnTerminate(() -> {
+            // 在响应完成后记录结束时间
+            exchange.getAttributes().put(Constants.UPSTREAM_END_TIME_ATTR, System.currentTimeMillis());
+        });
     }
 
     @Override

@@ -1,11 +1,10 @@
-package cn.techoc.oriongateway.core.loggging;
-
+package cn.techoc.oriongateway.core.logging.access;
 
 import cn.techoc.oriongateway.core.Constants;
-import lombok.var;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -51,20 +50,19 @@ public class AccessLogWebFilter implements WebFilter {
 
         // 记录请求开始时间（总时间）
         long requestStartTime = System.currentTimeMillis();
-        return chain.filter(exchange)
-                .doFinally(signalType -> {
-                    try {
-                        logAccess(exchange, requestStartTime);
-                    } catch (Exception e) {
-                        log.error("Access log error", e);
-                    }
-                });
+        return chain.filter(exchange).doFinally(signalType -> {
+            try {
+                logAccess(exchange, requestStartTime);
+            } catch (Exception e) {
+                log.error("Access log error", e);
+            }
+        });
     }
 
-    void logAccess(ServerWebExchange exchange, long requestStartTime) {
+    public void logAccess(ServerWebExchange exchange, long requestStartTime) {
 
         // 提前取出请求信息
-        var request = exchange.getRequest();
+        ServerHttpRequest request = exchange.getRequest();
         InetSocketAddress remoteAddress = request.getRemoteAddress();
         InetAddress address = remoteAddress != null ? remoteAddress.getAddress() : null;
         String remoteAddr = address != null ? address.getHostAddress() : "-";
@@ -103,36 +101,78 @@ public class AccessLogWebFilter implements WebFilter {
             upstreamResponseTime = -1.0;
         }
 
-        var response = exchange.getResponse();
+        ServerHttpResponse response = exchange.getResponse();
 
         java.util.EnumMap<AccessLogVariable, Object> vars = new java.util.EnumMap<>(AccessLogVariable.class);
         vars.put(AccessLogVariable.REMOTE_ADDR, remoteAddr);
 
         String remoteUser = "-";
-        String authorization = request.getHeaders().getFirst("Authorization");
-        if (authorization != null && authorization.startsWith("Basic ")) {
-            try {
-                String base64Credentials = authorization.substring("Basic ".length()).trim();
-                String credentials = new String(java.util.Base64.getDecoder().decode(base64Credentials));
-                String[] values = credentials.split(":", 2);
-                if (values.length > 0) {
-                    remoteUser = values[0];
+        if (props.isResolveRemoteUserFromBasicAuth()) {
+            String authorization = request.getHeaders().getFirst("Authorization");
+            if (authorization != null && authorization.startsWith("Basic ")) {
+                try {
+                    String base64Credentials =
+                            authorization.substring("Basic ".length()).trim();
+                    String credentials =
+                            new String(java.util.Base64.getDecoder().decode(base64Credentials));
+                    String[] values = credentials.split(":", 2);
+                    if (values.length > 0) {
+                        remoteUser = values[0];
+                    }
+                } catch (Exception e) {
+                    // 忽略解析错误，使用默认值 "-"
                 }
-            } catch (Exception e) {
-                // 忽略解析错误，使用默认值 "-"
             }
         }
         vars.put(AccessLogVariable.REMOTE_USER, remoteUser);
         vars.put(AccessLogVariable.TIME_LOCAL, AccessLogFormatter.now(props.getZoneId()));
-        vars.put(AccessLogVariable.REQUEST, request.getMethodValue() + " " + request.getURI().getRawPath());
+        vars.put(
+                AccessLogVariable.REQUEST,
+                request.getMethodValue() + " " + request.getURI().getRawPath());
         vars.put(AccessLogVariable.STATUS, getStatus(response));
         vars.put(AccessLogVariable.BODY_BYTES_SENT, response.getHeaders().getContentLength());
-        vars.put(AccessLogVariable.HTTP_REFERER, request.getHeaders().getFirst("Referer"));
-        vars.put(AccessLogVariable.HTTP_USER_AGENT, request.getHeaders().getFirst("User-Agent"));
-        vars.put(AccessLogVariable.HTTP_X_FORWARDED_FOR, request.getHeaders().getFirst("X-Forwarded-For"));
-        vars.put(AccessLogVariable.UPSTREAM_ADDR, upstreamAddr);   // 可选
-        vars.put(AccessLogVariable.UPSTREAM_RESPONSE_TIME, String.format("%.3f", upstreamResponseTime));
-        vars.put(AccessLogVariable.REQUEST_TIME, String.format("%.3f", totalRequestTime));
+        // 按开关控制标准头写入（关闭则置为 null，格式化为 "-")
+        vars.put(
+                AccessLogVariable.HTTP_REFERER,
+                props.isIncludeReferer() ? request.getHeaders().getFirst("Referer") : null);
+        vars.put(
+                AccessLogVariable.HTTP_USER_AGENT,
+                props.isIncludeUserAgent() ? request.getHeaders().getFirst("User-Agent") : null);
+        vars.put(
+                AccessLogVariable.HTTP_X_FORWARDED_FOR,
+                props.isIncludeXForwardedFor() ? request.getHeaders().getFirst("X-Forwarded-For") : null);
+        vars.put(AccessLogVariable.UPSTREAM_ADDR, props.isIncludeUpstreamAddr() ? upstreamAddr : null);
+        if (props.isIncludeTimes()) {
+            vars.put(AccessLogVariable.UPSTREAM_RESPONSE_TIME, String.format("%.3f", upstreamResponseTime));
+            vars.put(AccessLogVariable.REQUEST_TIME, String.format("%.3f", totalRequestTime));
+        } else {
+            vars.put(AccessLogVariable.UPSTREAM_RESPONSE_TIME, null);
+            vars.put(AccessLogVariable.REQUEST_TIME, null);
+        }
+
+        // 聚合请求头/响应头（仅在 pattern 使用且开关打开时有效）
+        if (props.isIncludeRequestHeaders()) {
+            String reqHeaders = request.getHeaders().entrySet().stream()
+                    .map(e -> e.getKey() + "=" + String.join(",", e.getValue()))
+                    .collect(java.util.stream.Collectors.joining("; "));
+            if (reqHeaders.length() > props.getHeadersMaxLength()) {
+                reqHeaders = reqHeaders.substring(0, props.getHeadersMaxLength()) + "...";
+            }
+            vars.put(AccessLogVariable.REQ_HEADERS, reqHeaders);
+        } else {
+            vars.put(AccessLogVariable.REQ_HEADERS, null);
+        }
+        if (props.isIncludeResponseHeaders()) {
+            String respHeaders = response.getHeaders().entrySet().stream()
+                    .map(e -> e.getKey() + "=" + String.join(",", e.getValue()))
+                    .collect(java.util.stream.Collectors.joining("; "));
+            if (respHeaders.length() > props.getHeadersMaxLength()) {
+                respHeaders = respHeaders.substring(0, props.getHeadersMaxLength()) + "...";
+            }
+            vars.put(AccessLogVariable.RESP_HEADERS, respHeaders);
+        } else {
+            vars.put(AccessLogVariable.RESP_HEADERS, null);
+        }
 
         String logLine = AccessLogFormatter.format(props.getPattern(), vars);
         log.info(logLine);
@@ -145,4 +185,3 @@ public class AccessLogWebFilter implements WebFilter {
         return response.getStatusCode().value();
     }
 }
-

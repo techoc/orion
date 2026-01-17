@@ -16,7 +16,6 @@ spring:
       #          '[/**]':
       #            allowedOrigins:
       #              - "https://docs.spring.io"
-      #              - "http://localhost:63342"
       #            allowedMethods:
       #              - GET
       #              - POST
@@ -24,11 +23,11 @@ spring:
 
       routes:
         - id: add_params
-          uri: https://httpbin.org
+          uri: https://httpbingo.org
           #          uri: http://127.0.0.1:8081
           #          uri: http://localhost:2015
           predicates:
-            - Path=/post
+            - Path=/get
           #            - Header=add-params
           filters:
             - name: AddRequestParameter
@@ -39,14 +38,14 @@ spring:
               args:
                 name: aaa
                 value: aaa
-            - RemoveResponseHeader=Access-Control-Allow-Origin
-            - RemoveResponseHeader=Access-Control-Allow-Methods
-            - RemoveResponseHeader=Access-Control-Allow-Headers
-
         #        - id: option
         #          uri: https://httpbin.org
         #          predicates:
         #            - Method=OPTIONS
+        - id: httpbin_post
+          uri: https://httpbingo.org
+          predicates:
+            - Path=/post
 
         - id: delay
           uri: lb://httpbin
@@ -60,10 +59,10 @@ spring:
 
 gateway:
   access-log:
-    enabled: false
+    enabled: true
     pattern: "$remote_addr - $remote_user [$time_local] \"$request\" $status $body_bytes_sent \"$http_referer\" \"$http_user_agent\" \"$http_x_forwarded_for\" $upstream_addr ups_resp_time: $upstream_response_time request_time: $request_time"
   #    pattern: '$remote_addr - - [$time_local] "$request_method $uri" $status "$referer" "$user_agent" $request_time s upstream: $upstream_addr ($upstream_time s)'
-  race-tracing:
+  link-tracing:
     enabled: true
     trace-request-prefix: true
     trace-request-suffix: true
@@ -79,3 +78,8 @@ gateway:
       - authorization
       - cookie
       - set-cookie
+    groupLogsByPhase: true
+
+logging:
+  level:
+    root: debug

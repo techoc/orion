@@ -58,11 +58,15 @@ public class LinkTracingResponseDecorator extends ServerHttpResponseDecorator {
      * @param tracePrefix                是否在响应前进行追踪
      * @param traceSuffix                是否在响应后进行追踪
      */
-    public LinkTracingResponseDecorator(String requestId, ServerHttpResponse delegate,
-                                        Runnable requestSuffixCallback,
-                                        Consumer<String> responsePrefixBodyConsumer,
-                                        Consumer<String> responseSuffixBodyConsumer,
-                                        int maxBodySize, boolean tracePrefix, boolean traceSuffix) {
+    public LinkTracingResponseDecorator(
+            String requestId,
+            ServerHttpResponse delegate,
+            Runnable requestSuffixCallback,
+            Consumer<String> responsePrefixBodyConsumer,
+            Consumer<String> responseSuffixBodyConsumer,
+            int maxBodySize,
+            boolean tracePrefix,
+            boolean traceSuffix) {
         super(delegate);
         this.requestId = requestId;
         this.requestSuffixCallback = requestSuffixCallback;
@@ -100,46 +104,45 @@ public class LinkTracingResponseDecorator extends ServerHttpResponseDecorator {
         // 只有当需要追踪响应体时才进行处理
         if (tracePrefix || traceSuffix) {
             // 先收集整个响应体
-            return DataBufferUtils.join(body)
-                    .flatMap(dataBuffer -> {
-                        // 将响应体转换为字节数组并缓存
-                        byte[] bodyBytes = convertBufferToBytes(dataBuffer);
-                        cachedBody.set(bodyBytes.clone());
+            return DataBufferUtils.join(body).flatMap(dataBuffer -> {
+                // 将响应体转换为字节数组并缓存
+                byte[] bodyBytes = convertBufferToBytes(dataBuffer);
+                cachedBody.set(bodyBytes.clone());
 
-                        // 获取响应体字符串表示
-                        String bodyString = convertBytesToString(bodyBytes);
+                // 获取响应体字符串表示
+                String bodyString = convertBytesToString(bodyBytes);
 
-                        // 在记录日志之前复制整个响应
-                        byte[] logBodyBytes = new byte[bodyBytes.length];
-                        System.arraycopy(bodyBytes, 0, logBodyBytes, 0, bodyBytes.length);
+                // 在记录日志之前复制整个响应
+                byte[] logBodyBytes = new byte[bodyBytes.length];
+                System.arraycopy(bodyBytes, 0, logBodyBytes, 0, bodyBytes.length);
 
-                        // 记录下游响应进入网关时日志
-                        if (tracePrefix) {
-                            String logBodyString = convertBytesToString(logBodyBytes);
-                            responsePrefixBodyConsumer.accept(logBodyString);
-                        }
+                // 记录下游响应进入网关时日志
+                if (tracePrefix) {
+                    String logBodyString = convertBytesToString(logBodyBytes);
+                    responsePrefixBodyConsumer.accept(logBodyString);
+                }
 
-                        // 创建一个新的DataBuffer用于发送给客户端
-                        DataBuffer responseBuffer = this.bufferFactory().allocateBuffer(bodyBytes.length);
-                        responseBuffer.write(bodyBytes);
+                // 创建一个新的DataBuffer用于发送给客户端
+                DataBuffer responseBuffer = this.bufferFactory().allocateBuffer(bodyBytes.length);
+                responseBuffer.write(bodyBytes);
 
-                        // 释放原始的DataBuffer
-                        DataBufferUtils.release(dataBuffer);
+                // 释放原始的DataBuffer
+                DataBufferUtils.release(dataBuffer);
 
-                        // 发送响应给客户端
-                        return super.writeWith(Mono.just(responseBuffer))
-                                .doOnSuccess(aVoid -> {
-                                    // 记录下游响应离开网关时日志
-                                    if (traceSuffix) {
-                                        // 再次复制用于出口日志
-                                        byte[] exitLogBodyBytes = new byte[bodyBytes.length];
-                                        System.arraycopy(bodyBytes, 0, exitLogBodyBytes, 0, bodyBytes.length);
-                                        String exitLogBodyString = convertBytesToString(exitLogBodyBytes);
-                                        responseSuffixBodyConsumer.accept(exitLogBodyString);
-                                    }
-                                })
-                                .doFinally(signalType -> DataBufferUtils.release(responseBuffer)); // 释放响应缓冲区
-                    });
+                // 发送响应给客户端
+                return super.writeWith(Mono.just(responseBuffer))
+                        .doOnSuccess(aVoid -> {
+                            // 记录下游响应离开网关时日志
+                            if (traceSuffix) {
+                                // 再次复制用于出口日志
+                                byte[] exitLogBodyBytes = new byte[bodyBytes.length];
+                                System.arraycopy(bodyBytes, 0, exitLogBodyBytes, 0, bodyBytes.length);
+                                String exitLogBodyString = convertBytesToString(exitLogBodyBytes);
+                                responseSuffixBodyConsumer.accept(exitLogBodyString);
+                            }
+                        })
+                        .doFinally(signalType -> DataBufferUtils.release(responseBuffer)); // 释放响应缓冲区
+            });
         }
 
         // 如果不需要追踪响应体，直接调用父类方法
@@ -153,7 +156,8 @@ public class LinkTracingResponseDecorator extends ServerHttpResponseDecorator {
      * @return Mono<Void> 异步处理结果
      */
     @Override
-    public Mono<Void> writeAndFlushWith(org.reactivestreams.Publisher<? extends org.reactivestreams.Publisher<? extends DataBuffer>> body) {
+    public Mono<Void> writeAndFlushWith(
+            org.reactivestreams.Publisher<? extends org.reactivestreams.Publisher<? extends DataBuffer>> body) {
         // 对于分块响应，实现更复杂。此实现专注于非分块响应。
         // 更健壮的分块体追踪解决方案需要拦截每个块。
         // 为简单起见，如果分块则直接委托。
@@ -209,6 +213,9 @@ public class LinkTracingResponseDecorator extends ServerHttpResponseDecorator {
 
         // 将字节数组转换为字符串
         String bodyString = new String(bytes, StandardCharsets.UTF_8);
+
+        // 将所有换行符替换为空格，确保输出在一行中
+        bodyString = bodyString.replaceAll("\\r?\\n", " ");
 
         // 根据最大大小限制处理数据
         if (maxBodySize != -1 && bytes.length > maxBodySize) {

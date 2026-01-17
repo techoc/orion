@@ -9,5 +9,4 @@ class OrionGatewaySimpleApplicationTests {
     @Test
     void contextLoads() {
     }
-
 }
