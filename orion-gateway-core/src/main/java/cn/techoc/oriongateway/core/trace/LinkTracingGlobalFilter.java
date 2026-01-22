@@ -85,7 +85,10 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
         ServerHttpResponse wrappedResponse = wrapResponse(requestId, exchange);
 
         // 继续执行过滤器链
-        return chain.filter(exchange.mutate().request(wrappedRequest).response(wrappedResponse).build())
+        return chain.filter(exchange.mutate()
+                        .request(wrappedRequest)
+                        .response(wrappedResponse)
+                        .build())
                 .doOnEach(signal -> {
                     // 当上游调用完成时（成功或错误），记录后续阶段的日志
                     if (signal.isOnComplete() || signal.isOnError()) {
@@ -117,7 +120,13 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
             if (properties.isTraceRequestBody()) {
                 return;
             }
-            logPhase(requestId, "Request_prefix", method, uri, exchange.getRequest().getHeaders(), null);
+            logPhase(
+                    requestId,
+                    "Request_prefix",
+                    method,
+                    uri,
+                    exchange.getRequest().getHeaders(),
+                    null);
         }
     }
 
@@ -141,8 +150,7 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
                     body -> logRequestBody(requestId, body, bodyPhase),
                     properties.getMaxBodySize(),
                     shouldLogBody,
-                    exchange.getResponse().bufferFactory()
-            );
+                    exchange.getResponse().bufferFactory());
         }
         return request;
     }
@@ -169,8 +177,7 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
                     body -> logResponseBody(requestId, body, "Response_suffix"), // 下游响应离开网关时日志回调
                     properties.getMaxBodySize(), // 最大响应体大小限制
                     properties.isTraceResponsePrefix(),
-                    properties.isTraceResponseSuffix()
-            );
+                    properties.isTraceResponseSuffix());
         } else {
             // 即使不追踪响应体，也需要确保 Request_suffix 被记录
             response = new LinkTracingResponseDecorator(
@@ -181,7 +188,7 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
                     null, // 不追踪响应体时不需要 Response_suffix 回调
                     0, // 不追踪响应体时不需要限制大小
                     false, // 不追踪 Response_prefix
-                    false  // 不追踪 Response_suffix
+                    false // 不追踪 Response_suffix
             );
         }
         return response;
@@ -196,8 +203,8 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
      * @param request   包装后的请求对象
      * @param response  包装后的响应对象
      */
-    private void logPostProcessingPhases(String requestId, HttpMethod method, URI uri,
-                                         ServerHttpRequest request, ServerHttpResponse response) {
+    private void logPostProcessingPhases(
+            String requestId, HttpMethod method, URI uri, ServerHttpRequest request, ServerHttpResponse response) {
         // Phase 3: Response_prefix - 下游响应进入网关时
         logResponsePrefixPhase(requestId, method, uri, response);
 
@@ -281,8 +288,13 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
      * @param requestHeaders 请求头部信息（用于请求阶段）
      * @param response       响应对象（用于响应阶段）
      */
-    private void logPhase(String requestId, String phase, HttpMethod method, URI uri,
-                          HttpHeaders requestHeaders, ServerHttpResponse response) {
+    private void logPhase(
+            String requestId,
+            String phase,
+            HttpMethod method,
+            URI uri,
+            HttpHeaders requestHeaders,
+            ServerHttpResponse response) {
         switch (phase) {
             case "Request_prefix":
             case "Request_suffix":
@@ -315,7 +327,9 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
         logMessage.append(String.format("[%s] --- %s --- %s %s", requestId, phase, method, uri));
 
         // 添加请求参数
-        if (properties.isTraceRequestParams() && uri.getQuery() != null && !uri.getQuery().isEmpty()) {
+        if (properties.isTraceRequestParams()
+                && uri.getQuery() != null
+                && !uri.getQuery().isEmpty()) {
             logMessage.append(String.format(" | Params: %s", uri.getQuery()));
         }
 
@@ -345,10 +359,11 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
      * @param uri       请求URI
      * @param response  响应对象
      */
-    private void logResponsePhase(String requestId, String phase, HttpMethod method, URI uri, ServerHttpResponse response) {
+    private void logResponsePhase(
+            String requestId, String phase, HttpMethod method, URI uri, ServerHttpResponse response) {
         StringBuilder logMessage = new StringBuilder();
-        logMessage.append(String.format("[%s] --- %s --- %s %s | Status: %s",
-                requestId, phase, method, uri, response.getStatusCode()));
+        logMessage.append(String.format(
+                "[%s] --- %s --- %s %s | Status: %s", requestId, phase, method, uri, response.getStatusCode()));
 
         // 添加请求参数（用于响应阶段也展示请求的查询参数）
         if (uri.getQuery() != null && !uri.getQuery().isEmpty()) {
@@ -413,7 +428,9 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
         logMessage.append(String.format("[%s] --- %s --- %s %s", requestId, phase, method, uri));
 
         // 添加请求参数
-        if (properties.isTraceRequestParams() && uri.getQuery() != null && !uri.getQuery().isEmpty()) {
+        if (properties.isTraceRequestParams()
+                && uri.getQuery() != null
+                && !uri.getQuery().isEmpty()) {
             logMessage.append(String.format(" | Params: %s", uri.getQuery()));
         } else if (uri.getQuery() != null && !uri.getQuery().isEmpty()) {
             // 即使没有显式启用参数追踪，也输出参数信息以保持日志完整性

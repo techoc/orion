@@ -3,14 +3,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.18</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <groupId>cn.techoc</groupId>
+        <artifactId>orion</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
     </parent>
-    <groupId>cn.techoc</groupId>
+
     <artifactId>orion-gateway-simple</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
     <name>orion-gateway-simple</name>
     <description>orion-gateway-simple</description>
     <url/>
@@ -27,7 +25,7 @@
         <url/>
     </scm>
     <properties>
-        <java.version>8</java.version>
+        <java.version>11</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- 插件版本定义 -->
         <maven-war-plugin.version>3.3.2</maven-war-plugin.version>
@@ -66,14 +64,13 @@
                 <executions>
                     <execution>
                         <id>make-assembly</id>
-                        <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
+                        <phase>package</phase>
                     </execution>
                 </executions>
             </plugin>
-
 
             <!-- 1. 配置 maven-war-plugin 来构建标准的 WAR 包 -->
             <!-- WAR 包的生成逻辑不变，它会包含项目自身的类/资源以及所有运行时依赖。 -->

@@ -21,8 +21,8 @@ public class GateWayAccessLogAutoConfiguration {
     // 关闭 netty 的访问日志
     @Bean
     public WebServerFactoryCustomizer<NettyReactiveWebServerFactory> nettyCustomizer() {
-        return factory -> factory.addServerCustomizers(httpServer ->
-                httpServer.accessLog(false) // 关闭访问日志
+        return factory -> factory.addServerCustomizers(
+                httpServer -> httpServer.accessLog(false) // 关闭访问日志
         );
     }
 

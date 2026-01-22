@@ -9,5 +9,4 @@ public class OrionGatewaySimpleApplication {
     public static void main(String[] args) {
         SpringApplication.run(OrionGatewaySimpleApplication.class, args);
     }
-
 }

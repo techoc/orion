@@ -10,7 +10,8 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 public class AccessLogProperties {
     private boolean enabled = true;
     private String zoneId = "Asia/Shanghai";
-    private String pattern = "$remote_addr - $remote_user [$time_local] \"$request\" $status $body_bytes_sent \"$http_referer\" \"$http_user_agent\" \"$http_x_forwarded_for\" $upstream_addr ups_resp_time: $upstream_response_time request_time: $request_time";
+    private String pattern =
+            "$remote_addr - $remote_user [$time_local] \"$request\" $status $body_bytes_sent \"$http_referer\" \"$http_user_agent\" \"$http_x_forwarded_for\" $upstream_addr ups_resp_time: $upstream_response_time request_time: $request_time";
 
     // 细粒度开关（可热更新）
     private boolean includeReferer = true;
@@ -27,7 +28,6 @@ public class AccessLogProperties {
 
     public boolean isEnabled() {
         return enabled;
-
     }
 
     public void setEnabled(boolean enabled) {
@@ -36,7 +36,6 @@ public class AccessLogProperties {
 
     public String getZoneId() {
         return zoneId;
-
     }
 
     public void setZoneId(String zoneId) {
@@ -45,7 +44,6 @@ public class AccessLogProperties {
 
     public String getPattern() {
         return pattern;
-
     }
 
     public void setPattern(String pattern) {
@@ -54,7 +52,6 @@ public class AccessLogProperties {
 
     public boolean isIncludeReferer() {
         return includeReferer;
-
     }
 
     public void setIncludeReferer(boolean includeReferer) {
@@ -63,7 +60,6 @@ public class AccessLogProperties {
 
     public boolean isIncludeUserAgent() {
         return includeUserAgent;
-
     }
 
     public void setIncludeUserAgent(boolean includeUserAgent) {
@@ -72,7 +68,6 @@ public class AccessLogProperties {
 
     public boolean isIncludeXForwardedFor() {
         return includeXForwardedFor;
-
     }
 
     public void setIncludeXForwardedFor(boolean includeXForwardedFor) {
@@ -81,7 +76,6 @@ public class AccessLogProperties {
 
     public boolean isIncludeUpstreamAddr() {
         return includeUpstreamAddr;
-
     }
 
     public void setIncludeUpstreamAddr(boolean includeUpstreamAddr) {
@@ -90,7 +84,6 @@ public class AccessLogProperties {
 
     public boolean isIncludeTimes() {
         return includeTimes;
-
     }
 
     public void setIncludeTimes(boolean includeTimes) {
@@ -99,7 +92,6 @@ public class AccessLogProperties {
 
     public boolean isResolveRemoteUserFromBasicAuth() {
         return resolveRemoteUserFromBasicAuth;
-
     }
 
     public void setResolveRemoteUserFromBasicAuth(boolean resolveRemoteUserFromBasicAuth) {
@@ -108,7 +100,6 @@ public class AccessLogProperties {
 
     public boolean isIncludeRequestHeaders() {
         return includeRequestHeaders;
-
     }
 
     public void setIncludeRequestHeaders(boolean includeRequestHeaders) {
@@ -117,7 +108,6 @@ public class AccessLogProperties {
 
     public boolean isIncludeResponseHeaders() {
         return includeResponseHeaders;
-
     }
 
     public void setIncludeResponseHeaders(boolean includeResponseHeaders) {
@@ -126,7 +116,6 @@ public class AccessLogProperties {
 
     public int getHeadersMaxLength() {
         return headersMaxLength;
-
     }
 
     public void setHeadersMaxLength(int headersMaxLength) {

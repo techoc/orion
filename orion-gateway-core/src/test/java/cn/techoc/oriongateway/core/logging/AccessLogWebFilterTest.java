@@ -1,5 +1,7 @@
-package cn.techoc.oriongateway.core.loggging;
+package cn.techoc.oriongateway.core.logging;
 
+import cn.techoc.oriongateway.core.logging.access.AccessLogProperties;
+import cn.techoc.oriongateway.core.logging.access.AccessLogWebFilter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,11 +36,10 @@ public class AccessLogWebFilterTest {
     @BeforeEach
     public void setUp() {
         closeable = MockitoAnnotations.openMocks(this);
-        when(props.getPattern()).thenReturn(
-                "$remote_addr - $remote_user [$time_local] \\\"$request\\\" $status $body_bytes_sent " +
-                        "\\\"$http_referer\\\" \\\"$http_user_agent\\\" \\\"$http_x_forwarded_for\\\" $upstream_addr " +
-                        "ups_resp_time: $upstream_response_time request_time: $request_time"
-        );
+        when(props.getPattern())
+                .thenReturn("$remote_addr - $remote_user [$time_local] \\\"$request\\\" $status $body_bytes_sent "
+                        + "\\\"$http_referer\\\" \\\"$http_user_agent\\\" \\\"$http_x_forwarded_for\\\" $upstream_addr "
+                        + "ups_resp_time: $upstream_response_time request_time: $request_time");
 
         // 现在可以使用带logger参数的构造函数，便于测试
         filter = new AccessLogWebFilter(props, logger);

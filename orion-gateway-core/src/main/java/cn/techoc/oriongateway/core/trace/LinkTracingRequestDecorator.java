@@ -56,8 +56,13 @@ public class LinkTracingRequestDecorator extends ServerHttpRequestDecorator {
      * @param traceSuffix       是否在请求出口阶段记录请求体
      * @param dataBufferFactory DataBuffer工厂
      */
-    public LinkTracingRequestDecorator(String requestId, ServerHttpRequest delegate, Consumer<String> bodyConsumer,
-                                       int maxBodySize, boolean traceSuffix, DataBufferFactory dataBufferFactory) {
+    public LinkTracingRequestDecorator(
+            String requestId,
+            ServerHttpRequest delegate,
+            Consumer<String> bodyConsumer,
+            int maxBodySize,
+            boolean traceSuffix,
+            DataBufferFactory dataBufferFactory) {
         super(delegate);
         this.requestId = requestId;
         this.bodyConsumer = bodyConsumer;

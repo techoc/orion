@@ -14,6 +14,4 @@ public class TraceLogAutoConfiguration {
     public LinkTracingGlobalFilter raceGlobalFilter(LinkTracingProperties linkTracingProperties) {
         return new LinkTracingGlobalFilter(linkTracingProperties);
     }
-
-
 }
