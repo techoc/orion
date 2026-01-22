@@ -210,6 +210,9 @@ public class LinkTracingResponseDecorator extends ServerHttpResponseDecorator {
         // 将字节数组转换为字符串
         String bodyString = new String(bytes, StandardCharsets.UTF_8);
 
+        // 将所有换行符替换为空格，确保输出在一行中
+        bodyString = bodyString.replaceAll("\\r?\\n", " ");
+
         // 根据最大大小限制处理数据
         if (maxBodySize != -1 && bytes.length > maxBodySize) {
             String phase = this.tracePrefix ? "Response_prefix" : "Response_suffix";

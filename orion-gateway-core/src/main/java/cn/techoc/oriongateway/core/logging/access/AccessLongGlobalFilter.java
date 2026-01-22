@@ -1,4 +1,4 @@
-package cn.techoc.oriongateway.core.loggging;
+package cn.techoc.oriongateway.core.logging.access;
 
 import cn.techoc.oriongateway.core.Constants;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;

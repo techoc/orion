@@ -1,4 +1,4 @@
-package cn.techoc.oriongateway.core.loggging;
+package cn.techoc.oriongateway.core.logging.access;
 
 import org.springframework.util.StringUtils;
 

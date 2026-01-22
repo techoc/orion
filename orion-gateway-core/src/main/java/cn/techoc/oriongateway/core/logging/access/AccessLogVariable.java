@@ -1,4 +1,4 @@
-package cn.techoc.oriongateway.core.loggging;
+package cn.techoc.oriongateway.core.logging.access;
 
 import lombok.Getter;
 
@@ -65,7 +65,12 @@ public enum AccessLogVariable {
     /**
      * Upstream response time
      */
-    UPSTREAM_RESPONSE_TIME("upstream_response_time");
+    UPSTREAM_RESPONSE_TIME("upstream_response_time"),
+
+    // 额外聚合占位符（可按需在 pattern 中使用）
+    REQ_HEADERS("req_headers"),
+
+    RESP_HEADERS("resp_headers");
 
 
     private final String variableName;

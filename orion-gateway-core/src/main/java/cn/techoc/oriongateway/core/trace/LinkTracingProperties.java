@@ -2,6 +2,7 @@ package cn.techoc.oriongateway.core.trace;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 
 import java.util.Collections;
 import java.util.Set;
@@ -18,6 +19,7 @@ import java.util.Set;
  */
 @Data
 @ConfigurationProperties(prefix = "gateway.link-tracing")
+@RefreshScope
 public class LinkTracingProperties {
 
     /**
@@ -108,4 +110,121 @@ public class LinkTracingProperties {
      * 默认值：false
      */
     private boolean groupLogsByPhase = false;
+
+    public boolean isEnabled() {
+        return enabled;
+
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isTraceRequestPrefix() {
+        return traceRequestPrefix;
+
+    }
+
+    public void setTraceRequestPrefix(boolean traceRequestPrefix) {
+        this.traceRequestPrefix = traceRequestPrefix;
+    }
+
+    public boolean isTraceRequestSuffix() {
+        return traceRequestSuffix;
+
+    }
+
+    public void setTraceRequestSuffix(boolean traceRequestSuffix) {
+        this.traceRequestSuffix = traceRequestSuffix;
+    }
+
+    public boolean isTraceResponsePrefix() {
+        return traceResponsePrefix;
+
+    }
+
+    public void setTraceResponsePrefix(boolean traceResponsePrefix) {
+        this.traceResponsePrefix = traceResponsePrefix;
+    }
+
+    public boolean isTraceResponseSuffix() {
+        return traceResponseSuffix;
+
+    }
+
+    public void setTraceResponseSuffix(boolean traceResponseSuffix) {
+        this.traceResponseSuffix = traceResponseSuffix;
+    }
+
+    public boolean isTraceRequestBody() {
+        return traceRequestBody;
+
+    }
+
+    public void setTraceRequestBody(boolean traceRequestBody) {
+        this.traceRequestBody = traceRequestBody;
+    }
+
+    public boolean isTraceResponseBody() {
+        return traceResponseBody;
+
+    }
+
+    public void setTraceResponseBody(boolean traceResponseBody) {
+        this.traceResponseBody = traceResponseBody;
+    }
+
+    public int getMaxBodySize() {
+        return maxBodySize;
+
+    }
+
+    public void setMaxBodySize(int maxBodySize) {
+        this.maxBodySize = maxBodySize;
+    }
+
+    public Set<String> getExcludeHeaders() {
+        return excludeHeaders;
+
+    }
+
+    public void setExcludeHeaders(Set<String> excludeHeaders) {
+        this.excludeHeaders = excludeHeaders;
+    }
+
+    public boolean isTraceRequestParams() {
+        return traceRequestParams;
+
+    }
+
+    public void setTraceRequestParams(boolean traceRequestParams) {
+        this.traceRequestParams = traceRequestParams;
+    }
+
+    public boolean isTraceRequestHeaders() {
+        return traceRequestHeaders;
+
+    }
+
+    public void setTraceRequestHeaders(boolean traceRequestHeaders) {
+        this.traceRequestHeaders = traceRequestHeaders;
+    }
+
+    public boolean isTraceResponseHeaders() {
+        return traceResponseHeaders;
+
+    }
+
+    public void setTraceResponseHeaders(boolean traceResponseHeaders) {
+        this.traceResponseHeaders = traceResponseHeaders;
+    }
+
+    public boolean isGroupLogsByPhase() {
+        return groupLogsByPhase;
+
+    }
+
+    public void setGroupLogsByPhase(boolean groupLogsByPhase) {
+        this.groupLogsByPhase = groupLogsByPhase;
+    }
 }

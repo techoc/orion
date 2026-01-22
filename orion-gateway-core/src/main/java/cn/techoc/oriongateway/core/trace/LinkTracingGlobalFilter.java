@@ -440,6 +440,8 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
 
         // 添加请求体
         if (body != null && !body.trim().isEmpty()) {
+            // 将所有换行符替换为空格，确保输出在一行中
+            body = body.replaceAll("\\r?\\n", "");
             logMessage.append(String.format(" | Body: %s", body));
         } else {
             logMessage.append(" | Body: [Empty Body]");
@@ -469,6 +471,7 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
         if (exchange == null) {
             // 如果找不到对应的请求信息，使用原来的日志格式
             if (body == null || body.trim().isEmpty()) {
+                body = body.replaceAll("\\r?\\n", "");
                 log.info("[{}] {} Body: [Empty Body]", requestId, phase);
             } else {
                 log.info("[{}] {} Body: {}", requestId, phase, body);
