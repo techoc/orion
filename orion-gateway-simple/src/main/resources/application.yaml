@@ -56,6 +56,9 @@ spring:
           uri: http://127.0.0.1:8081
           predicates:
             - Path=/demo/hello
+  application:
+    name: orion-gateway-simple
+
 
 gateway:
   access-log:
@@ -79,6 +82,21 @@ gateway:
       - cookie
       - set-cookie
     groupLogsByPhase: true
+
+Orion:
+  logging:
+    enabled: true
+    appenders:
+      - type: rolling_file
+        name: YamlDynamicAppender
+        fileName: logs/yaml_dynamic.log
+        filePattern: logs/yaml_dynamic-%d{yyyy-MM-dd}-%i.log
+        pattern: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"
+    loggers:
+      - name: cn.techoc.yaml
+        appenderName: YamlDynamicAppender
+        level: INFO
+        additivity: false
 
 logging:
   level:

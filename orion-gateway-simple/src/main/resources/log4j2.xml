@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- monitorInterval: 监控配置文件变化的时间间隔（秒） -->
+<Configuration status="WARN" monitorInterval="30" shutdownHook="disable">
+
+    <!-- 监听配置变化的监听器列表 -->
+    <ConfigurationListeners>
+        <!-- 自定义配置变更监听器 -->
+        <ConfigurationListener class="cn.techoc.orion.log4j.Log4j2ConfigChangeListener"/>
+    </ConfigurationListeners>
+
+    <!-- 定义变量（可从系统属性或环境变量覆盖） -->
+    <Properties>
+        <Property name="LOG_PATH">${sys:orion.log.path:-logs}</Property>
+        <Property name="LOG_FILE">${sys:orion.log.file:-orion-gateway}</Property>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
+        <Property name="LOG_CHARSET">UTF-8</Property>
+    </Properties>
+
+    <!-- 自定义过滤器 -->
+    <CustomFilters>
+        <ThresholdFilter level="${sys:orion.log.level:-INFO}" onMatch="ACCEPT" onMismatch="DENY"/>
+    </CustomFilters>
+
+    <!-- Appenders（输出目的地） -->
+    <Appenders>
+
+        <!-- 控制台输出（带颜色支持） -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%highlight{%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n}"/>
+        </Console>
+
+        <!-- 文件输出（滚动日志） -->
+        <RollingFile name="RollingFile"
+                     fileName="${LOG_PATH}/${LOG_FILE}.log"
+                     filePattern="${LOG_PATH}/${LOG_FILE}-%d{yyyy-MM-dd}-%i.log.gz">
+
+            <PatternLayout pattern="${LOG_PATTERN}" charset="${LOG_CHARSET}"/>
+
+            <Policies>
+                <!-- 每天滚动一次 -->
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <!-- 文件大小超过 10MB 滚动 -->
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+
+            <!-- 保留最近 30 天的日志 -->
+            <DefaultRolloverStrategy max="30">
+                <!-- 可添加删除旧日志的策略 -->
+                <Delete basePath="${LOG_PATH}" maxDepth="1">
+                    <IfFileName glob="${LOG_FILE}-*.log.gz"/>
+                    <IfLastModified age="30d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+        <!-- 错误日志单独输出 -->
+        <RollingFile name="ErrorFile"
+                     fileName="${LOG_PATH}/${LOG_FILE}-error.log"
+                     filePattern="${LOG_PATH}/${LOG_FILE}-error-%d{yyyy-MM-dd}-%i.log.gz">
+
+            <PatternLayout pattern="${LOG_PATTERN}" charset="${LOG_CHARSET}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+
+        <!-- 异步增强性能（使用 Disruptor） -->
+        <AsyncLogger name="AsyncLogger" level="info" addLocation="false">
+            <AppenderRef ref="RollingFile"/>
+        </AsyncLogger>
+
+    </Appenders>
+
+    <!-- Loggers（日志记录器定义） -->
+    <Loggers>
+
+        <!-- 自定义 package 的日志级别 -->
+        <Logger name="cn.techoc.orion" level="DEBUG" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Logger>
+
+        <!-- Spring Cloud Gateway -->
+        <Logger name="org.springframework.cloud.gateway" level="DEBUG" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Logger>
+
+        <!-- Reactor/WebFlux -->
+        <Logger name="reactor.netty" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Logger>
+
+        <!-- 异步日志（推荐配置） -->
+        <AsyncRoot level="INFO" includeLocation="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </AsyncRoot>
+
+        <!-- Root Logger（如果不需要异步，使用这个替代 AsyncRoot） -->
+        <!--
+        <Root level="${sys:orion.log.level:-INFO}">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+            <AppenderRef ref="ErrorFile" level="ERROR"/>
+        </Root>
+        -->
+    </Loggers>
+</Configuration>

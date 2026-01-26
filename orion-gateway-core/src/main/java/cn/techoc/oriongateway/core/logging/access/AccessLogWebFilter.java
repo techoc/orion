@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -93,14 +94,14 @@ public class AccessLogWebFilter implements WebFilter {
      * @return 异步处理结果
      */
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+    @NonNull
+    public Mono<Void> filter(@NonNull ServerWebExchange exchange, @NonNull WebFilterChain chain) {
         if (!properties.isEnabled()) {
             return chain.filter(exchange);
         }
 
         long requestStartTime = System.currentTimeMillis();
-        return chain.filter(exchange)
-                .doFinally(signalType -> logAccess(exchange, requestStartTime));
+        return chain.filter(exchange).doFinally(signalType -> logAccess(exchange, requestStartTime));
     }
 
     // ==================== 日志记录核心逻辑 ====================
@@ -114,7 +115,7 @@ public class AccessLogWebFilter implements WebFilter {
      * @param exchange         服务交换器
      * @param requestStartTime 请求开始时间（毫秒）
      */
-    protected void logAccess(ServerWebExchange exchange, long requestStartTime) {
+    public void logAccess(ServerWebExchange exchange, long requestStartTime) {
         try {
             AccessLogContext context = buildLogContext(exchange, requestStartTime);
             java.util.EnumMap<AccessLogVariable, Object> variables = buildLogVariables(context);
@@ -179,7 +180,8 @@ public class AccessLogWebFilter implements WebFilter {
         variables.put(AccessLogVariable.TIME_LOCAL, AccessLogFormatter.now(properties.getZoneId()));
         variables.put(AccessLogVariable.REQUEST, buildRequestLine(context.request));
         variables.put(AccessLogVariable.STATUS, getStatusCode(context.response));
-        variables.put(AccessLogVariable.BODY_BYTES_SENT, context.response.getHeaders().getContentLength());
+        variables.put(
+                AccessLogVariable.BODY_BYTES_SENT, context.response.getHeaders().getContentLength());
 
         // 条件性记录的变量
         addOptionalVariables(variables, context);
@@ -193,18 +195,24 @@ public class AccessLogWebFilter implements WebFilter {
      * @param variables 变量映射表
      * @param context   日志上下文
      */
-    private void addOptionalVariables(java.util.EnumMap<AccessLogVariable, Object> variables, AccessLogContext context) {
+    private void addOptionalVariables(
+            java.util.EnumMap<AccessLogVariable, Object> variables, AccessLogContext context) {
         // HTTP 请求头
-        variables.put(AccessLogVariable.HTTP_REFERER,
+        variables.put(
+                AccessLogVariable.HTTP_REFERER,
                 properties.isIncludeReferer() ? context.request.getHeaders().getFirst("Referer") : null);
-        variables.put(AccessLogVariable.HTTP_USER_AGENT,
+        variables.put(
+                AccessLogVariable.HTTP_USER_AGENT,
                 properties.isIncludeUserAgent() ? context.request.getHeaders().getFirst("User-Agent") : null);
-        variables.put(AccessLogVariable.HTTP_X_FORWARDED_FOR,
-                properties.isIncludeXForwardedFor() ? context.request.getHeaders().getFirst("X-Forwarded-For") : null);
+        variables.put(
+                AccessLogVariable.HTTP_X_FORWARDED_FOR,
+                properties.isIncludeXForwardedFor()
+                        ? context.request.getHeaders().getFirst("X-Forwarded-For")
+                        : null);
 
         // 上游地址
-        variables.put(AccessLogVariable.UPSTREAM_ADDR,
-                properties.isIncludeUpstreamAddr() ? context.upstreamAddress : null);
+        variables.put(
+                AccessLogVariable.UPSTREAM_ADDR, properties.isIncludeUpstreamAddr() ? context.upstreamAddress : null);
 
         // 时间指标
         if (properties.isIncludeTimes()) {
@@ -216,9 +224,11 @@ public class AccessLogWebFilter implements WebFilter {
         }
 
         // 完整的请求头/响应头
-        variables.put(AccessLogVariable.REQ_HEADERS,
+        variables.put(
+                AccessLogVariable.REQ_HEADERS,
                 properties.isIncludeRequestHeaders() ? formatHeaders(context.request.getHeaders()) : null);
-        variables.put(AccessLogVariable.RESP_HEADERS,
+        variables.put(
+                AccessLogVariable.RESP_HEADERS,
                 properties.isIncludeResponseHeaders() ? formatHeaders(context.response.getHeaders()) : null);
     }
 
@@ -290,7 +300,8 @@ public class AccessLogWebFilter implements WebFilter {
         }
 
         try {
-            String base64Credentials = authorization.substring(BASIC_AUTH_PREFIX.length()).trim();
+            String base64Credentials =
+                    authorization.substring(BASIC_AUTH_PREFIX.length()).trim();
             String credentials = new String(Base64.getDecoder().decode(base64Credentials));
             String[] parts = credentials.split(":", 2);
             return parts.length > 0 ? parts[0] : DEFAULT_VALUE;
@@ -370,9 +381,7 @@ public class AccessLogWebFilter implements WebFilter {
                 .collect(java.util.stream.Collectors.joining(HEADER_DELIMITER));
 
         int maxLength = properties.getHeadersMaxLength();
-        return formatted.length() > maxLength
-                ? formatted.substring(0, maxLength) + TRUNCATED_SUFFIX
-                : formatted;
+        return formatted.length() > maxLength ? formatted.substring(0, maxLength) + TRUNCATED_SUFFIX : formatted;
     }
 
     /**
@@ -439,4 +448,3 @@ public class AccessLogWebFilter implements WebFilter {
         String remoteUser;
     }
 }
-
