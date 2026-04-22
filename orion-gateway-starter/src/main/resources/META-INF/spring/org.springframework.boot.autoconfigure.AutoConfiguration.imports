@@ -1,2 +1,3 @@
 cn.techoc.oriongatewaystarter.OrionGatewayAutoConfiguration
 cn.techoc.oriongatewaystarter.Log4j2DynamicAutoConfiguration
+cn.techoc.oriongatewaystarter.GatewayNettyPipelineAutoConfiguration
