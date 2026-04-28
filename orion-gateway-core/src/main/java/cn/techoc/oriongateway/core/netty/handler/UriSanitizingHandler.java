@@ -1,4 +1,4 @@
-package cn.techoc.oriongateway.core.nettyhandler;
+package cn.techoc.oriongateway.core.netty.handler;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -23,16 +23,16 @@ public class UriSanitizingHandler extends ChannelInboundHandlerAdapter {
     };
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof HttpRequest) {
             HttpRequest request = (HttpRequest) msg;
             String uri = request.uri();
             String sanitized = sanitizeUri(uri);
             if (!uri.equals(sanitized)) {
-                request.setUri(sanitized);  // 替换 URI
+                request.setUri(sanitized); // 替换 URI
             }
         }
-        ctx.fireChannelRead(msg);  // 传递给下一个 Handler
+        ctx.fireChannelRead(msg); // 传递给下一个 Handler
     }
 
     private String sanitizeUri(String uri) {
@@ -45,4 +45,3 @@ public class UriSanitizingHandler extends ChannelInboundHandlerAdapter {
         return result;
     }
 }
-
