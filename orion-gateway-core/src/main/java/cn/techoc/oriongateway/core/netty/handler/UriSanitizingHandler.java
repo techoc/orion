@@ -1,19 +1,21 @@
 package cn.techoc.oriongateway.core.netty.handler;
 
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.HttpRequest;
 import lombok.Getter;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -34,23 +36,31 @@ import java.util.stream.Collectors;
  * <p>用户可通过继承此类并添加 @Component 注解来覆盖默认实现。
  */
 @Getter
-@Component
+@ChannelHandler.Sharable
 public class UriSanitizingHandler extends ChannelInboundHandlerAdapter {
 
+    private static final Logger log = LoggerFactory.getLogger(UriSanitizingHandler.class);
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     private final boolean enabled;
     private final Set<String> pathPatterns;
+    private final Charset charset;
 
     public UriSanitizingHandler() {
-        this(true, "/api/**");
+        this(true, "/api/**", StandardCharsets.UTF_8);
+    }
+
+    public UriSanitizingHandler(boolean enabled, String pathPatterns) {
+        this(enabled, pathPatterns, StandardCharsets.UTF_8);
     }
 
     public UriSanitizingHandler(
-            @Value("${orion.gateway.uri-sanitizing.enabled:true}") boolean enabled,
-            @Value("${orion.gateway.uri-sanitizing.path-patterns:/api/**}") String pathPatterns) {
+            boolean enabled,
+            String pathPatterns,
+            Charset charset) {
         this.enabled = enabled;
         this.pathPatterns = parsePatterns(pathPatterns);
+        this.charset = charset;
     }
 
     private Set<String> parsePatterns(String patterns) {
@@ -72,6 +82,11 @@ public class UriSanitizingHandler extends ChannelInboundHandlerAdapter {
 
         HttpRequest request = (HttpRequest) msg;
         String uri = request.uri();
+
+        if (log.isDebugEnabled()) {
+            log.debug("orion.handler processing URI: {}", uri);
+        }
+
         int queryIndex = uri.indexOf('?');
 
         if (queryIndex < 0) {
@@ -81,6 +96,9 @@ public class UriSanitizingHandler extends ChannelInboundHandlerAdapter {
 
         String path = uri.substring(0, queryIndex);
         if (!matchesPath(path)) {
+            if (log.isDebugEnabled()) {
+                log.debug("orion.handler skipping URI (path '{}' not in patterns {})", path, pathPatterns);
+            }
             ctx.fireChannelRead(msg);
             return;
         }
@@ -89,6 +107,7 @@ public class UriSanitizingHandler extends ChannelInboundHandlerAdapter {
         String encodedQuery = urlEncode(query);
 
         if (!query.equals(encodedQuery)) {
+            log.info("orion.handler sanitized URI: {} -> {}?{}", uri, path, encodedQuery);
             request.setUri(path + "?" + encodedQuery);
         }
 
@@ -103,31 +122,23 @@ public class UriSanitizingHandler extends ChannelInboundHandlerAdapter {
     }
 
     protected String urlEncode(String query) {
-        if (query == null || query.isEmpty()) {
+        if (!StringUtils.hasLength(query)) {
             return query;
         }
 
-        // 按 & 分割各个查询参数
-        String[] params = query.split("&");
-        StringBuilder result = new StringBuilder();
+        MultiValueMap<String, String> params =
+                UriComponentsBuilder.newInstance().query(query).build().getQueryParams();
 
-        for (int i = 0; i < params.length; i++) {
-            if (i > 0) {
-                result.append("&");
-            }
-
-            String param = params[i];
-            int eqIndex = param.indexOf('=');
-
-            if (eqIndex >= 0) {
-                // 键值对形式：key=value，只编码值
-                String[] parts = param.split("=", 2);
-                String key = parts[0];
-                String value = parts.length > 1 ? parts[1] : "";
-                result.append(key).append("=").append(URLEncoder.encode(value, StandardCharsets.UTF_8));
-            } else {
-                // 无值形式（如 flag 参数）
-                result.append(URLEncoder.encode(param, StandardCharsets.UTF_8));
+        StringBuilder result = new StringBuilder(query.length() + 32);
+        boolean first = true;
+        for (Map.Entry<String, List<String>> entry : params.entrySet()) {
+            String key = entry.getKey();
+            for (String value : entry.getValue()) {
+                if (!first) {
+                    result.append('&');
+                }
+                result.append(key).append('=').append(URLEncoder.encode(value, charset));
+                first = false;
             }
         }
 

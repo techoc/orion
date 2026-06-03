@@ -40,7 +40,7 @@
                 <!-- 每天滚动一次 -->
                 <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
                 <!-- 文件大小超过 10MB 滚动 -->
-                <SizeBasedTriggeringPolicy size="10MB"/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
             </Policies>
 
             <!-- 保留最近 30 天的日志 -->
@@ -78,12 +78,6 @@
 
         <!-- 自定义 package 的日志级别 -->
         <Logger name="cn.techoc.orion" level="DEBUG" additivity="false">
-            <AppenderRef ref="Console"/>
-            <AppenderRef ref="RollingFile"/>
-        </Logger>
-
-        <!-- Spring Cloud Gateway -->
-        <Logger name="org.springframework.cloud.gateway" level="DEBUG" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="RollingFile"/>
         </Logger>

@@ -13,10 +13,11 @@ import org.junit.jupiter.api.*;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.net.URL;
+import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -40,7 +41,7 @@ class UriSanitizingHandlerNettyPipelineTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        receivedUris = new ArrayList<>();
+        receivedUris = Collections.synchronizedList(new ArrayList<>());
         bossGroup = new NioEventLoopGroup(1);
         workerGroup = new NioEventLoopGroup(1);
 
@@ -53,6 +54,7 @@ class UriSanitizingHandlerNettyPipelineTest {
                         ChannelPipeline pipeline = ch.pipeline();
                         pipeline.addLast(new HttpServerCodec());
                         pipeline.addLast(new UriSanitizingHandler());
+                        pipeline.addLast(new HttpObjectAggregator(65536));
                         pipeline.addLast(new SimpleChannelInboundHandler<FullHttpRequest>() {
                             @Override
                             protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
@@ -92,25 +94,32 @@ class UriSanitizingHandlerNettyPipelineTest {
     }
 
     private String sendHttpRequest(String uri) throws Exception {
-        URL url = new URL("http://localhost:" + port + uri);
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("GET");
-        connection.setConnectTimeout(10000);
-        connection.setReadTimeout(10000);
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress("localhost", port), 10000);
+            socket.setSoTimeout(10000);
 
-        int responseCode = connection.getResponseCode();
-        assertEquals(200, responseCode, "HTTP 响应码应该是 200");
+            String request = "GET " + uri + " HTTP/1.1\r\n" +
+                    "Host: localhost:" + port + "\r\n" +
+                    "Connection: close\r\n\r\n";
+            OutputStream out = socket.getOutputStream();
+            out.write(request.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            out.flush();
 
-        BufferedReader reader = new BufferedReader(
-                new InputStreamReader(connection.getInputStream(), CharsetUtil.UTF_8));
-        StringBuilder response = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            response.append(line);
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(socket.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
+            String statusLine = reader.readLine();
+            assertEquals(200, Integer.parseInt(statusLine.split(" ")[1]),
+                    "HTTP 响应码应该是 200");
+
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            reader.close();
+
+            return response.toString();
         }
-        reader.close();
-
-        return response.toString();
     }
 
     @Nested

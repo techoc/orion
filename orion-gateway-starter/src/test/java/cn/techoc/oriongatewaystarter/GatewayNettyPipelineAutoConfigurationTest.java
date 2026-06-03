@@ -27,10 +27,12 @@ import static org.mockito.Mockito.*;
 class GatewayNettyPipelineAutoConfigurationTest {
 
     private GatewayNettyPipelineAutoConfiguration configuration;
+    private UriSanitizingHandler handler;
 
     @BeforeEach
     void setUp() {
         configuration = new GatewayNettyPipelineAutoConfiguration();
+        handler = new UriSanitizingHandler();
     }
 
     private void setFlag(String fieldName, Object value) {
@@ -47,7 +49,7 @@ class GatewayNettyPipelineAutoConfigurationTest {
     private NettyServerCustomizer captureAndReturnCustomizer() {
         NettyReactiveWebServerFactory factory = mock(NettyReactiveWebServerFactory.class);
         WebServerFactoryCustomizer<NettyReactiveWebServerFactory> customizer =
-                configuration.nettyServerCustomizer();
+                configuration.nettyServerCustomizer(handler);
         customizer.customize(factory);
 
         ArgumentCaptor<NettyServerCustomizer> captor =
@@ -68,7 +70,7 @@ class GatewayNettyPipelineAutoConfigurationTest {
         @DisplayName("nettyServerCustomizer 应返回非空实例")
         void testNettyServerCustomizerNotNull() {
             WebServerFactoryCustomizer<NettyReactiveWebServerFactory> customizer =
-                    configuration.nettyServerCustomizer();
+                    configuration.nettyServerCustomizer(handler);
             assertNotNull(customizer, "WebServerFactoryCustomizer 不应为空");
         }
 
@@ -85,7 +87,7 @@ class GatewayNettyPipelineAutoConfigurationTest {
         @DisplayName("nettyServerCustomizer 方法应被 @Bean 注解标注")
         void testMethodIsAnnotatedWithBean() throws NoSuchMethodException {
             assertNotNull(GatewayNettyPipelineAutoConfiguration.class
-                            .getMethod("nettyServerCustomizer")
+                            .getMethod("nettyServerCustomizer", UriSanitizingHandler.class)
                             .getAnnotation(org.springframework.context.annotation.Bean.class),
                     "方法应被 @Bean 注解标注");
         }
@@ -107,7 +109,7 @@ class GatewayNettyPipelineAutoConfigurationTest {
                     .getDeclaredField("enableNettyUriSanitizing")
                     .getAnnotation(Value.class);
             assertNotNull(annotation);
-            assertEquals("${orion.gateway.enable-netty-uri-sanitizing:false}", annotation.value());
+            assertEquals("${orion.gateway.uri-sanitizing.enabled:false}", annotation.value());
         }
     }
 
@@ -149,7 +151,7 @@ class GatewayNettyPipelineAutoConfigurationTest {
         void testCustomizeCallsAddServerCustomizers() {
             NettyReactiveWebServerFactory factory = mock(NettyReactiveWebServerFactory.class);
             WebServerFactoryCustomizer<NettyReactiveWebServerFactory> customizer =
-                    configuration.nettyServerCustomizer();
+                    configuration.nettyServerCustomizer(handler);
 
             customizer.customize(factory);
 
@@ -161,7 +163,7 @@ class GatewayNettyPipelineAutoConfigurationTest {
         void testCustomizeCallsAddServerCustomizersOnce() {
             NettyReactiveWebServerFactory factory = mock(NettyReactiveWebServerFactory.class);
             WebServerFactoryCustomizer<NettyReactiveWebServerFactory> customizer =
-                    configuration.nettyServerCustomizer();
+                    configuration.nettyServerCustomizer(handler);
 
             customizer.customize(factory);
 
@@ -282,6 +284,7 @@ class GatewayNettyPipelineAutoConfigurationTest {
         @Test
         @DisplayName("doOnChannelInit 回调应在 reactor.left.httpCodec 之后添加 UriSanitizingHandler")
         void testDoOnChannelInitAddsHandlerAtCorrectPosition() {
+            UriSanitizingHandler handler = new UriSanitizingHandler();
             ChannelPipeline pipeline = mock(ChannelPipeline.class);
             Channel channel = mock(Channel.class);
             ConnectionObserver observer = mock(ConnectionObserver.class);
@@ -291,20 +294,21 @@ class GatewayNettyPipelineAutoConfigurationTest {
             ChannelPipelineConfigurer configurer = (obs, ch, addr) ->
                     ch.pipeline().addAfter(
                             "reactor.left.httpCodec",
-                            "uriSanitizingHandler",
-                            new UriSanitizingHandler());
+                            "orion.handler",
+                            handler);
 
             configurer.onChannelInit(observer, channel, address);
 
             verify(pipeline).addAfter(
                     eq("reactor.left.httpCodec"),
-                    eq("uriSanitizingHandler"),
-                    any(UriSanitizingHandler.class));
+                    eq("orion.handler"),
+                    eq(handler));
         }
 
         @Test
         @DisplayName("添加的 Handler 应为 UriSanitizingHandler 实例")
         void testAddedHandlerIsUriSanitizingHandler() {
+            UriSanitizingHandler handler = new UriSanitizingHandler();
             ChannelPipeline pipeline = mock(ChannelPipeline.class);
             Channel channel = mock(Channel.class);
             ConnectionObserver observer = mock(ConnectionObserver.class);
@@ -314,21 +318,22 @@ class GatewayNettyPipelineAutoConfigurationTest {
             ChannelPipelineConfigurer configurer = (obs, ch, addr) ->
                     ch.pipeline().addAfter(
                             "reactor.left.httpCodec",
-                            "uriSanitizingHandler",
-                            new UriSanitizingHandler());
+                            "orion.handler",
+                            handler);
 
             configurer.onChannelInit(observer, channel, address);
 
             ArgumentCaptor<ChannelHandler> captor = ArgumentCaptor.forClass(ChannelHandler.class);
             verify(pipeline).addAfter(anyString(), anyString(), captor.capture());
 
-            assertInstanceOf(UriSanitizingHandler.class, captor.getValue(),
-                    "添加的 Handler 应为 UriSanitizingHandler");
+            assertSame(handler, captor.getValue(),
+                    "添加的 Handler 应为注入的 UriSanitizingHandler Bean 实例");
         }
 
         @Test
-        @DisplayName("Handler 注册名称应为 uriSanitizingHandler")
+        @DisplayName("Handler 注册名称应为 orion.handler")
         void testHandlerRegisteredName() {
+            UriSanitizingHandler handler = new UriSanitizingHandler();
             ChannelPipeline pipeline = mock(ChannelPipeline.class);
             Channel channel = mock(Channel.class);
             ConnectionObserver observer = mock(ConnectionObserver.class);
@@ -338,20 +343,21 @@ class GatewayNettyPipelineAutoConfigurationTest {
             ChannelPipelineConfigurer configurer = (obs, ch, addr) ->
                     ch.pipeline().addAfter(
                             "reactor.left.httpCodec",
-                            "uriSanitizingHandler",
-                            new UriSanitizingHandler());
+                            "orion.handler",
+                            handler);
 
             configurer.onChannelInit(observer, channel, address);
 
             verify(pipeline).addAfter(
                     anyString(),
-                    eq("uriSanitizingHandler"),
+                    eq("orion.handler"),
                     any(ChannelHandler.class));
         }
 
         @Test
-        @DisplayName("每次 Channel 初始化应创建独立的 UriSanitizingHandler 实例")
-        void testEachChannelGetsIndependentHandler() {
+        @DisplayName("每次 Channel 初始化应使用注入的 UriSanitizingHandler Bean 实例")
+        void testEachChannelGetsInjectedHandler() {
+            UriSanitizingHandler handler = new UriSanitizingHandler();
             ChannelPipeline pipeline1 = mock(ChannelPipeline.class);
             ChannelPipeline pipeline2 = mock(ChannelPipeline.class);
             Channel channel1 = mock(Channel.class);
@@ -364,8 +370,8 @@ class GatewayNettyPipelineAutoConfigurationTest {
             ChannelPipelineConfigurer configurer = (obs, ch, addr) ->
                     ch.pipeline().addAfter(
                             "reactor.left.httpCodec",
-                            "uriSanitizingHandler",
-                            new UriSanitizingHandler());
+                            "orion.handler",
+                            handler);
 
             configurer.onChannelInit(observer, channel1, address);
             configurer.onChannelInit(observer, channel2, address);
@@ -375,8 +381,12 @@ class GatewayNettyPipelineAutoConfigurationTest {
             verify(pipeline1).addAfter(anyString(), anyString(), captor1.capture());
             verify(pipeline2).addAfter(anyString(), anyString(), captor2.capture());
 
-            assertNotSame(captor1.getValue(), captor2.getValue(),
-                    "每个 Channel 应获得独立的 UriSanitizingHandler 实例");
+            assertSame(handler, captor1.getValue(),
+                    "Channel1 应使用注入的 Handler Bean 实例");
+            assertSame(handler, captor2.getValue(),
+                    "Channel2 应使用注入的 Handler Bean 实例");
+            assertSame(captor1.getValue(), captor2.getValue(),
+                    "所有 Channel 应共享同一个注入的 Handler Bean 实例");
         }
     }
 
@@ -412,9 +422,9 @@ class GatewayNettyPipelineAutoConfigurationTest {
         @DisplayName("多次调用 nettyServerCustomizer 应返回独立实例")
         void testMultipleCallsReturnIndependentInstances() {
             WebServerFactoryCustomizer<NettyReactiveWebServerFactory> c1 =
-                    configuration.nettyServerCustomizer();
+                    configuration.nettyServerCustomizer(handler);
             WebServerFactoryCustomizer<NettyReactiveWebServerFactory> c2 =
-                    configuration.nettyServerCustomizer();
+                    configuration.nettyServerCustomizer(handler);
 
             assertNotNull(c1);
             assertNotNull(c2);
@@ -425,7 +435,7 @@ class GatewayNettyPipelineAutoConfigurationTest {
         @DisplayName("同一 Customizer 对不同 Factory 均应正常注册")
         void testSameCustomizerWorksWithDifferentFactories() {
             WebServerFactoryCustomizer<NettyReactiveWebServerFactory> customizer =
-                    configuration.nettyServerCustomizer();
+                    configuration.nettyServerCustomizer(handler);
 
             NettyReactiveWebServerFactory factory1 = mock(NettyReactiveWebServerFactory.class);
             NettyReactiveWebServerFactory factory2 = mock(NettyReactiveWebServerFactory.class);

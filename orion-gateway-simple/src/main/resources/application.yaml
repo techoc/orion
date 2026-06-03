@@ -1,9 +1,64 @@
 spring:
+  cloud:
+    discovery:
+      client:
+        simple:
+          instances:
+            httpbin:
+              - uri: https://httpbin.org/
+    gateway:
+      httpclient:
+        pool:
+          max-idle-time: 12
+          max-life-time: 30
+      #      globalcors:
+      #        cors-configurations:
+      #          '[/**]':
+      #            allowedOrigins:
+      #              - "https://docs.spring.io"
+      #            allowedMethods:
+      #              - GET
+      #              - POST
+      #              - OPTIONS
+
+      routes:
+        - id: add_params
+          uri: https://httpbingo.org
+          #          uri: http://127.0.0.1:8081
+          #          uri: http://localhost:2015
+          predicates:
+            - Path=/get
+          #            - Header=add-params
+          filters:
+            - name: AddRequestParameter
+              args:
+                name: add-params
+                value: add-params,add-params2
+            - name: AddRequestHeader
+              args:
+                name: aaa
+                value: aaa
+        #        - id: option
+        #          uri: https://httpbin.org
+        #          predicates:
+        #            - Method=OPTIONS
+        - id: httpbin_post
+          uri: https://httpbingo.org
+          predicates:
+            - Path=/post
+
+        - id: delay
+          uri: lb://httpbin
+          predicates:
+            - Path=/delay/{delay}
+
+        - id: hello_world
+          uri: http://127.0.0.1:8081
+          predicates:
+            - Path=/demo/hello
   application:
     name: orion-gateway-simple
 
-server:
-  port: 8080
 
 # Orion Gateway 配置
 orion:
@@ -15,10 +70,10 @@ orion:
     # URI 清理配置
     uri-sanitizing:
       enabled: true
-      path-patterns: /api/**,/service/**
+      path-patterns: /api/**,/service/**,/get
 
 # 日志配置
 logging:
   level:
-    root: INFO
+    root: DEBUG
     cn.techoc.oriongateway: DEBUG

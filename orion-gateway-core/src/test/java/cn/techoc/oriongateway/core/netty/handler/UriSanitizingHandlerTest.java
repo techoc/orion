@@ -290,10 +290,10 @@ class UriSanitizingHandlerTest {
     class HandlerCharacteristicsTests {
 
         @Test
-        @DisplayName("Handler 应为 Spring 管理的组件")
-        void testHandlerHasComponentAnnotation() {
-            assertNotNull(handler.getClass().getAnnotation(org.springframework.stereotype.Component.class),
-                    "Handler 应添加 @Component 注解");
+        @DisplayName("Handler 应标注 @Sharable 以支持多 Channel 共享")
+        void testHandlerHasSharableAnnotation() {
+            assertNotNull(handler.getClass().getAnnotation(io.netty.channel.ChannelHandler.Sharable.class),
+                    "Handler 应添加 @Sharable 注解");
         }
 
         @Test
