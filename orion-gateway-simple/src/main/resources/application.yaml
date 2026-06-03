@@ -1,103 +1,24 @@
 spring:
-  cloud:
-    discovery:
-      client:
-        simple:
-          instances:
-            httpbin:
-              - uri: https://httpbin.org/
-    gateway:
-      httpclient:
-        pool:
-          max-idle-time: 12
-          max-life-time: 30
-      #      globalcors:
-      #        cors-configurations:
-      #          '[/**]':
-      #            allowedOrigins:
-      #              - "https://docs.spring.io"
-      #            allowedMethods:
-      #              - GET
-      #              - POST
-      #              - OPTIONS
-
-      routes:
-        - id: add_params
-          uri: https://httpbingo.org
-          #          uri: http://127.0.0.1:8081
-          #          uri: http://localhost:2015
-          predicates:
-            - Path=/get
-          #            - Header=add-params
-          filters:
-            - name: AddRequestParameter
-              args:
-                name: add-params
-                value: add-params,add-params2
-            - name: AddRequestHeader
-              args:
-                name: aaa
-                value: aaa
-        #        - id: option
-        #          uri: https://httpbin.org
-        #          predicates:
-        #            - Method=OPTIONS
-        - id: httpbin_post
-          uri: https://httpbingo.org
-          predicates:
-            - Path=/post
-
-        - id: delay
-          uri: lb://httpbin
-          predicates:
-            - Path=/delay/{delay}
-
-        - id: hello_world
-          uri: http://127.0.0.1:8081
-          predicates:
-            - Path=/demo/hello
   application:
     name: orion-gateway-simple
 
+server:
+  port: 8080
 
-gateway:
-  access-log:
-    enabled: true
-    pattern: "$remote_addr - $remote_user [$time_local] \"$request\" $status $body_bytes_sent \"$http_referer\" \"$http_user_agent\" \"$http_x_forwarded_for\" $upstream_addr ups_resp_time: $upstream_response_time request_time: $request_time"
-  #    pattern: '$remote_addr - - [$time_local] "$request_method $uri" $status "$referer" "$user_agent" $request_time s upstream: $upstream_addr ($upstream_time s)'
-  link-tracing:
-    enabled: true
-    trace-request-prefix: true
-    trace-request-suffix: true
-    trace-response-prefix: true
-    trace-response-suffix: true
-    trace-request-body: true
-    trace-response-body: true
-    trace-request-params: true
-    trace-request-headers: true
-    trace-response-headers: true
-    max-body-size: 10240 # 10KB
-    exclude-headers:
-      - authorization
-      - cookie
-      - set-cookie
-    groupLogsByPhase: true
+# Orion Gateway 配置
+orion:
+  gateway:
+    # 是否启用 Netty URI 清理功能
+    enable-netty-uri-sanitizing: true
+    # 是否启用网关访问日志
+    enable-gateway-access-log: false
+    # URI 清理配置
+    uri-sanitizing:
+      enabled: true
+      path-patterns: /api/**,/service/**
 
-Orion:
-  logging:
-    enabled: true
-    appenders:
-      - type: rolling_file
-        name: YamlDynamicAppender
-        fileName: logs/yaml_dynamic.log
-        filePattern: logs/yaml_dynamic-%d{yyyy-MM-dd}-%i.log
-        pattern: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"
-    loggers:
-      - name: cn.techoc.yaml
-        appenderName: YamlDynamicAppender
-        level: INFO
-        additivity: false
-
+# 日志配置
 logging:
   level:
-    root: debug
+    root: INFO
+    cn.techoc.oriongateway: DEBUG
