@@ -282,9 +282,6 @@ class GatewayNettyPipelineAutoConfigurationTest {
         @Test
         @DisplayName("doOnChannelInit 回调应在 reactor.left.httpCodec 之后添加 UriSanitizingHandler")
         void testDoOnChannelInitAddsHandlerAtCorrectPosition() {
-            NettyServerCustomizer serverCustomizer = captureAndReturnCustomizer();
-            HttpServer customized = serverCustomizer.apply(HttpServer.create());
-
             ChannelPipeline pipeline = mock(ChannelPipeline.class);
             Channel channel = mock(Channel.class);
             ConnectionObserver observer = mock(ConnectionObserver.class);

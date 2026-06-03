@@ -9,6 +9,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.*;
 
 import java.io.BufferedReader;
@@ -25,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Slf4j
 @DisplayName("UriSanitizingHandler 网关集成测试")
 public class RealGatewayIntegrationTest {
 
@@ -34,7 +36,7 @@ public class RealGatewayIntegrationTest {
     private static NioEventLoopGroup workerGroup;
     private static Channel serverChannel;
     private static CountDownLatch serverReadyLatch;
-    private static AtomicInteger requestCounter = new AtomicInteger(0);
+    private static final AtomicInteger requestCounter = new AtomicInteger(0);
 
     @BeforeAll
     static void startServer() throws Exception {
@@ -82,7 +84,7 @@ public class RealGatewayIntegrationTest {
 
                             @Override
                             public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-                                cause.printStackTrace();
+                                log.error("Exception caught in gateway handler: {}", cause.getMessage(), cause);
                                 ctx.close();
                             }
                         });
@@ -250,8 +252,8 @@ public class RealGatewayIntegrationTest {
                     "/normal/path"
             };
 
-            for (int i = 0; i < testUris.length; i++) {
-                sendRequest(testUris[i]);
+            for (String uris : testUris) {
+                sendRequest(uris);
                 Thread.sleep(50);
             }
 
