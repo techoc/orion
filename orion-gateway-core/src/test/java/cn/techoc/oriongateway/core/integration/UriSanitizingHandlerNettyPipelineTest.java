@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * UriSanitizingHandler 深层 Netty Pipeline 集成测试
  * 测试在真实的 Netty 服务器环境中的 Handler 行为
+ *
+ * <p>注意：现在只编码查询参数，路径保持不变
  */
 @DisplayName("UriSanitizingHandler Netty Pipeline 深层集成测试")
 class UriSanitizingHandlerNettyPipelineTest {
@@ -116,15 +118,17 @@ class UriSanitizingHandlerNettyPipelineTest {
     class PipelinePositionTests {
 
         @Test
-        @DisplayName("深层测试：UriSanitizingHandler 应该在 HttpServerCodec 之后被调用")
+        @DisplayName("深层测试：路径包含非法字符但无查询参数 - 路径保持不变")
         void testHandlerPositionInPipeline() throws Exception {
+            // 默认 path-patterns 是 /api/**，匹配 /test|path
             String originalUri = "/test|path";
-            String expectedEncodedUri = "/test%7Cpath";
+            // 路径中的非法字符不应被编码（没有查询参数）
+            String expectedUri = "/test|path";
 
             sendHttpRequest(originalUri);
 
             assertEquals(1, receivedUris.size());
-            assertEquals(expectedEncodedUri, receivedUris.get(0));
+            assertEquals(expectedUri, receivedUris.get(0));
         }
 
         @Test
@@ -144,19 +148,20 @@ class UriSanitizingHandlerNettyPipelineTest {
     class ComplexUriTests {
 
         @Test
-        @DisplayName("深层测试：所有类型的非法字符混合")
+        @DisplayName("深层测试：路径包含非法字符但无查询参数 - 路径保持不变")
         void testAllIllegalCharsCombined() throws Exception {
+            // 路径中的非法字符不应被编码
             String originalUri = "/test|{id}/[path]^section";
-            String expectedEncodedUri = "/test%7C%7Bid%7D/%5Bpath%5D%5Esection";
+            String expectedUri = "/test|{id}/[path]^section";
 
             sendHttpRequest(originalUri);
 
             assertEquals(1, receivedUris.size());
-            assertEquals(expectedEncodedUri, receivedUris.get(0));
+            assertEquals(expectedUri, receivedUris.get(0));
         }
 
         @Test
-        @DisplayName("深层测试：带有查询字符串的复杂 URI")
+        @DisplayName("深层测试：带有查询字符串的 URI - 只编码查询参数")
         void testComplexUriWithQueryParams() throws Exception {
             String originalUri = "/api/search?q=test|value&filter={category}";
             String expectedEncodedUri = "/api/search?q=test%7Cvalue&filter=%7Bcategory%7D";
@@ -176,20 +181,32 @@ class UriSanitizingHandlerNettyPipelineTest {
         @DisplayName("真实场景：模拟 API 网关的路由场景")
         void testGatewayRoutingScenario() throws Exception {
             String[] gatewayUris = {
-                    "/service-a/api/users/{id}",
-                    "/service-b/api/items|search"
+                    "/api/users/{id}",      // 路径包含 {} 但无查询参数，保持不变
+                    "/api/items?q=test|value"  // 查询参数包含非法字符，应被编码
             };
 
             String[] expectedUris = {
-                    "/service-a/api/users/%7Bid%7D",
-                    "/service-b/api/items%7Csearch"
+                    "/api/users/{id}",               // 路径不变
+                    "/api/items?q=test%7Cvalue"       // 查询参数编码
             };
 
             for (int i = 0; i < gatewayUris.length; i++) {
                 sendHttpRequest(gatewayUris[i]);
                 assertEquals(expectedUris[i], receivedUris.get(i),
-                        "URI " + gatewayUris[i] + " 应该被正确编码");
+                        "URI " + gatewayUris[i] + " 应该被正确处理");
             }
+        }
+
+        @Test
+        @DisplayName("真实场景：查询参数编码测试")
+        void testQueryParamEncoding() throws Exception {
+            String originalUri = "/api/search?q={name}|[test]^value";
+            String expectedUri = "/api/search?q=%7Bname%7D%7C%5Btest%5D%5Evalue";
+
+            sendHttpRequest(originalUri);
+
+            assertEquals(1, receivedUris.size());
+            assertEquals(expectedUri, receivedUris.get(0));
         }
     }
 }

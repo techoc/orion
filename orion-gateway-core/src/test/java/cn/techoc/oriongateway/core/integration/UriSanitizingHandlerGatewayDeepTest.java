@@ -14,12 +14,13 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.verify;
 
 /**
  * UriSanitizingHandler 网关层深入测试
  * 测试 Handler 在真实场景中的行为
+ *
+ * <p>注意：现在只编码查询参数，路径保持不变
  */
 @DisplayName("UriSanitizingHandler 网关层深入测试")
 class UriSanitizingHandlerGatewayDeepTest {
@@ -40,10 +41,11 @@ class UriSanitizingHandlerGatewayDeepTest {
     class GatewayRequestScenarios {
 
         @Test
-        @DisplayName("网关场景：REST API 路径参数包含非法字符")
+        @DisplayName("网关场景：REST API 路径参数包含非法字符 - 路径不变，查询参数编码")
         void testRestApiPathParamWithIllegalChars() {
+            // 路径中的非法字符保持不变（因为没有查询参数）
             String originalUri = "/api/users/{userId}|details";
-            String expectedUri = "/api/users/%7BuserId%7D%7Cdetails";
+            String expectedUri = "/api/users/{userId}|details";
 
             HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, originalUri);
 
@@ -68,24 +70,40 @@ class UriSanitizingHandlerGatewayDeepTest {
         }
 
         @Test
-        @DisplayName("网关场景：微服务路由路径")
+        @DisplayName("网关场景：微服务路由路径（无查询参数）- 路径不变")
         void testMicroserviceRoutePath() {
             String originalUri = "/service-a/api/items|search";
-            String expectedUri = "/service-a/api/items%7Csearch";
+            String expectedUri = "/service-a/api/items|search";
 
             HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, originalUri);
 
             handler.channelRead(ctx, request);
 
+            // 默认 path-patterns 是 /api/**，不匹配 /service-a/**，所以不变
             assertEquals(expectedUri, request.uri());
             verify(ctx).fireChannelRead(request);
         }
 
         @Test
-        @DisplayName("网关场景：WebSocket 路径")
+        @DisplayName("网关场景：WebSocket 路径 - 路径不变")
         void testWebSocketPath() {
             String originalUri = "/ws/channel|room[123]";
-            String expectedUri = "/ws/channel%7Croom%5B123%5D";
+            String expectedUri = "/ws/channel|room[123]";
+
+            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, originalUri);
+
+            handler.channelRead(ctx, request);
+
+            // 默认 path-patterns 是 /api/**，不匹配 /ws/**，所以不变
+            assertEquals(expectedUri, request.uri());
+            verify(ctx).fireChannelRead(request);
+        }
+
+        @Test
+        @DisplayName("网关场景：查询参数包含非法字符，路径保持不变")
+        void testQueryParamsWithIllegalCharsAndPathUnchanged() {
+            String originalUri = "/api/items|detail?q=test|value";
+            String expectedUri = "/api/items|detail?q=test%7Cvalue";
 
             HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, originalUri);
 
@@ -101,7 +119,7 @@ class UriSanitizingHandlerGatewayDeepTest {
     class EdgeCases {
 
         @Test
-        @DisplayName("边界场景：超长 URI 路径")
+        @DisplayName("边界场景：超长 URI 路径 - 路径不变")
         void testVeryLongUri() {
             StringBuilder longUri = new StringBuilder("/api/");
             for (int i = 0; i < 50; i++) {
@@ -112,16 +130,16 @@ class UriSanitizingHandlerGatewayDeepTest {
 
             handler.channelRead(ctx, request);
 
-            // 验证所有 | 都被编码了
-            assertFalse(request.uri().contains("|"), "编码后的 URI 不应该包含 |");
+            // 路径中的 | 不应被编码（没有查询参数）
+            assertEquals(longUri.toString(), request.uri());
             verify(ctx).fireChannelRead(request);
         }
 
         @Test
-        @DisplayName("边界场景：URI 仅包含非法字符")
-        void testUriWithOnlyIllegalChars() {
-            String originalUri = "|{}[]\\^`";
-            String expectedUri = "%7C%7B%7D%5B%5D%5C%5E%60";
+        @DisplayName("边界场景：URI 仅包含路径无查询参数")
+        void testUriWithOnlyPathNoQuery() {
+            String originalUri = "/api/test|value";
+            String expectedUri = "/api/test|value";
 
             HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, originalUri);
 
@@ -148,43 +166,43 @@ class UriSanitizingHandlerGatewayDeepTest {
     class HttpMethodTests {
 
         @Test
-        @DisplayName("HTTP GET 请求")
+        @DisplayName("HTTP GET 请求 - 查询参数包含非法字符")
         void testGetMethod() {
-            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/api/test|value");
+            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/api/test?q=test|value");
             handler.channelRead(ctx, request);
-            assertEquals("/api/test%7Cvalue", request.uri());
+            assertEquals("/api/test?q=test%7Cvalue", request.uri());
         }
 
         @Test
-        @DisplayName("HTTP POST 请求")
+        @DisplayName("HTTP POST 请求 - 查询参数包含非法字符")
         void testPostMethod() {
-            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/api/test|value");
+            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/api/test?q=test|value");
             handler.channelRead(ctx, request);
-            assertEquals("/api/test%7Cvalue", request.uri());
+            assertEquals("/api/test?q=test%7Cvalue", request.uri());
         }
 
         @Test
-        @DisplayName("HTTP PUT 请求")
+        @DisplayName("HTTP PUT 请求 - 查询参数包含非法字符")
         void testPutMethod() {
-            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, "/api/test|value");
+            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, "/api/test?q=test|value");
             handler.channelRead(ctx, request);
-            assertEquals("/api/test%7Cvalue", request.uri());
+            assertEquals("/api/test?q=test%7Cvalue", request.uri());
         }
 
         @Test
-        @DisplayName("HTTP DELETE 请求")
+        @DisplayName("HTTP DELETE 请求 - 查询参数包含非法字符")
         void testDeleteMethod() {
-            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.DELETE, "/api/test|value");
+            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.DELETE, "/api/test?q=test|value");
             handler.channelRead(ctx, request);
-            assertEquals("/api/test%7Cvalue", request.uri());
+            assertEquals("/api/test?q=test%7Cvalue", request.uri());
         }
 
         @Test
-        @DisplayName("HTTP PATCH 请求")
+        @DisplayName("HTTP PATCH 请求 - 查询参数包含非法字符")
         void testPatchMethod() {
-            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PATCH, "/api/test|value");
+            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PATCH, "/api/test?q=test|value");
             handler.channelRead(ctx, request);
-            assertEquals("/api/test%7Cvalue", request.uri());
+            assertEquals("/api/test?q=test%7Cvalue", request.uri());
         }
     }
 
@@ -193,41 +211,44 @@ class UriSanitizingHandlerGatewayDeepTest {
     class SecurityTests {
 
         @Test
-        @DisplayName("安全：路径遍历攻击尝试")
+        @DisplayName("安全：路径遍历攻击尝试 - 路径保持不变")
         void testPathTraversalAttempt() {
             String maliciousUri = "/api/../../etc/passwd";
             HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, maliciousUri);
 
             handler.channelRead(ctx, request);
 
-            // UriSanitizingHandler 不处理路径遍历，只处理非法字符
+            // UriSanitizingHandler 只编码查询参数，路径保持不变
             assertEquals(maliciousUri, request.uri());
             verify(ctx).fireChannelRead(request);
         }
 
         @Test
-        @DisplayName("安全：SQL 注入尝试")
+        @DisplayName("安全：SQL 注入尝试 - 单引号会被 URL 编码")
         void testSqlInjectionAttempt() {
             String maliciousUri = "/api/users?id=1' OR '1'='1";
+            // URLEncoder 对空格编码为 +
+            String expectedUri = "/api/users?id=1%27+OR+%271%27%3D%271";
+
             HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, maliciousUri);
 
             handler.channelRead(ctx, request);
 
-            // 单引号不是非法字符，保持不变
-            assertEquals(maliciousUri, request.uri());
+            assertEquals(expectedUri, request.uri());
             verify(ctx).fireChannelRead(request);
         }
 
         @Test
-        @DisplayName("安全：XSS 攻击尝试")
+        @DisplayName("安全：XSS 攻击尝试 - 特殊字符会被 URL 编码")
         void testXssAttempt() {
             String maliciousUri = "/api/search?q=<script>alert('xss')</script>";
+            String expectedUri = "/api/search?q=%3Cscript%3Ealert%28%27xss%27%29%3C%2Fscript%3E";
+
             HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, maliciousUri);
 
             handler.channelRead(ctx, request);
 
-            // HTML 标签字符不是非法字符，保持不变
-            assertEquals(maliciousUri, request.uri());
+            assertEquals(expectedUri, request.uri());
             verify(ctx).fireChannelRead(request);
         }
     }

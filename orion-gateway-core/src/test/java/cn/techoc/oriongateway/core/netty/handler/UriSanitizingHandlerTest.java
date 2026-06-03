@@ -14,8 +14,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.lang.reflect.Method;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
 
 @DisplayName("UriSanitizingHandler 测试")
@@ -33,148 +32,171 @@ class UriSanitizingHandlerTest {
     }
 
     @Nested
-    @DisplayName("sanitizeUri 方法测试")
-    class SanitizeUriTests {
-
-        @Test
-        @DisplayName("正常情况：不含查询参数的URI应保持不变")
-        void testSanitizeUri_NoQueryParams() throws Exception {
-            String uri = "/api/users/123";
-
-            Method method = UriSanitizingHandler.class.getDeclaredMethod("sanitizeUri", String.class);
-            method.setAccessible(true);
-            String result = (String) method.invoke(handler, uri);
-
-            assertEquals(uri, result);
-        }
+    @DisplayName("urlEncode 方法测试")
+    class UrlEncodeTests {
 
         @Test
         @DisplayName("正常情况：查询参数中包含单个非法字符 |")
-        void testSanitizeUri_QueryParamWithPipeChar() throws Exception {
-            String uri = "/api/search?q=test|value";
-            String expected = "/api/search?q=test%7Cvalue";
+        void testUrlEncode_QueryParamWithPipeChar() throws Exception {
+            String query = "q=test|value";
+            // 使用 split("=", 2) 只在第一个 = 处分割，所以 key=q, value=test|value
+            String expected = "q=test%7Cvalue";
 
-            Method method = UriSanitizingHandler.class.getDeclaredMethod("sanitizeUri", String.class);
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("urlEncode", String.class);
             method.setAccessible(true);
-            String result = (String) method.invoke(handler, uri);
+            String result = (String) method.invoke(handler, query);
 
             assertEquals(expected, result);
         }
 
         @Test
         @DisplayName("正常情况：查询参数中包含大括号 { 和 }")
-        void testSanitizeUri_QueryParamWithCurlyBraces() throws Exception {
-            String uri = "/api/search?filter={type}";
-            String expected = "/api/search?filter=%7Btype%7D";
+        void testUrlEncode_QueryParamWithCurlyBraces() throws Exception {
+            String query = "filter={type}";
+            String expected = "filter=%7Btype%7D";
 
-            Method method = UriSanitizingHandler.class.getDeclaredMethod("sanitizeUri", String.class);
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("urlEncode", String.class);
             method.setAccessible(true);
-            String result = (String) method.invoke(handler, uri);
+            String result = (String) method.invoke(handler, query);
 
             assertEquals(expected, result);
         }
 
         @Test
         @DisplayName("正常情况：查询参数中包含反斜杠 \\")
-        void testSanitizeUri_QueryParamWithBackslash() throws Exception {
-            String uri = "/api/path?file=path\\to\\file";
-            String expected = "/api/path?file=path%5Cto%5Cfile";
+        void testUrlEncode_QueryParamWithBackslash() throws Exception {
+            String query = "file=path\\to\\file";
+            // 反斜杠 \ 在 URLEncoder 中编码为 %5C
+            String expected = "file=path%5Cto%5Cfile";
 
-            Method method = UriSanitizingHandler.class.getDeclaredMethod("sanitizeUri", String.class);
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("urlEncode", String.class);
             method.setAccessible(true);
-            String result = (String) method.invoke(handler, uri);
+            String result = (String) method.invoke(handler, query);
 
             assertEquals(expected, result);
         }
 
         @Test
         @DisplayName("正常情况：查询参数中包含脱字符 ^")
-        void testSanitizeUri_QueryParamWithCaret() throws Exception {
-            String uri = "/api/search?q=test^value";
-            String expected = "/api/search?q=test%5Evalue";
+        void testUrlEncode_QueryParamWithCaret() throws Exception {
+            String query = "q=test^value";
+            String expected = "q=test%5Evalue";
 
-            Method method = UriSanitizingHandler.class.getDeclaredMethod("sanitizeUri", String.class);
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("urlEncode", String.class);
             method.setAccessible(true);
-            String result = (String) method.invoke(handler, uri);
+            String result = (String) method.invoke(handler, query);
 
             assertEquals(expected, result);
         }
 
         @Test
         @DisplayName("正常情况：查询参数中包含方括号 [ 和 ]")
-        void testSanitizeUri_QueryParamWithSquareBrackets() throws Exception {
-            String uri = "/api/search?q=items[name]";
-            String expected = "/api/search?q=items%5Bname%5D";
+        void testUrlEncode_QueryParamWithSquareBrackets() throws Exception {
+            String query = "q=items[name]";
+            String expected = "q=items%5Bname%5D";
 
-            Method method = UriSanitizingHandler.class.getDeclaredMethod("sanitizeUri", String.class);
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("urlEncode", String.class);
             method.setAccessible(true);
-            String result = (String) method.invoke(handler, uri);
+            String result = (String) method.invoke(handler, query);
 
             assertEquals(expected, result);
         }
 
         @Test
         @DisplayName("正常情况：查询参数中包含反引号 `")
-        void testSanitizeUri_QueryParamWithBacktick() throws Exception {
-            String uri = "/api/search?q=`test`";
-            String expected = "/api/search?q=%60test%60";
+        void testUrlEncode_QueryParamWithBacktick() throws Exception {
+            String query = "q=`test`";
+            String expected = "q=%60test%60";
 
-            Method method = UriSanitizingHandler.class.getDeclaredMethod("sanitizeUri", String.class);
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("urlEncode", String.class);
             method.setAccessible(true);
-            String result = (String) method.invoke(handler, uri);
+            String result = (String) method.invoke(handler, query);
 
             assertEquals(expected, result);
         }
 
         @Test
         @DisplayName("正常情况：查询参数中混合多种非法字符")
-        void testSanitizeUri_QueryParamWithMixedIllegalChars() throws Exception {
-            String uri = "/api/search?q={id}|[test]^value";
-            String expected = "/api/search?q=%7Bid%7D%7C%5Btest%5D%5Evalue";
+        void testUrlEncode_QueryParamWithMixedIllegalChars() throws Exception {
+            String query = "q={id}|[test]^value";
+            String expected = "q=%7Bid%7D%7C%5Btest%5D%5Evalue";
 
-            Method method = UriSanitizingHandler.class.getDeclaredMethod("sanitizeUri", String.class);
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("urlEncode", String.class);
             method.setAccessible(true);
-            String result = (String) method.invoke(handler, uri);
+            String result = (String) method.invoke(handler, query);
 
             assertEquals(expected, result);
         }
 
         @Test
         @DisplayName("边界情况：空字符串")
-        void testSanitizeUri_EmptyString() throws Exception {
-            String uri = "";
+        void testUrlEncode_EmptyString() throws Exception {
+            String query = "";
 
-            Method method = UriSanitizingHandler.class.getDeclaredMethod("sanitizeUri", String.class);
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("urlEncode", String.class);
             method.setAccessible(true);
-            String result = (String) method.invoke(handler, uri);
+            String result = (String) method.invoke(handler, query);
 
             assertEquals("", result);
         }
 
         @Test
-        @DisplayName("正常情况：路径包含非法字符应保持不变（仅编码查询参数）")
-        void testSanitizeUri_PathWithIllegalChars_ShouldNotBeEncoded() throws Exception {
-            String uri = "/api/items|detail";
-
-            Method method = UriSanitizingHandler.class.getDeclaredMethod("sanitizeUri", String.class);
+        @DisplayName("边界情况：null 值")
+        void testUrlEncode_NullValue() throws Exception {
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("urlEncode", String.class);
             method.setAccessible(true);
-            String result = (String) method.invoke(handler, uri);
+            String result = (String) method.invoke(handler, (String) null);
 
-            // 路径中的非法字符不应被编码
-            assertEquals(uri, result);
+            assertNull(result);
         }
 
         @Test
         @DisplayName("正常情况：多个查询参数")
-        void testSanitizeUri_MultipleQueryParams() throws Exception {
-            String uri = "/api/search?q=test|value&filter={type}";
-            String expected = "/api/search?q=test%7Cvalue&filter=%7Btype%7D";
+        void testUrlEncode_MultipleQueryParams() throws Exception {
+            String query = "q=test|value&filter={type}";
+            // URLEncoder 对空格编码为 +
+            String expected = "q=test%7Cvalue&filter=%7Btype%7D";
 
-            Method method = UriSanitizingHandler.class.getDeclaredMethod("sanitizeUri", String.class);
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("urlEncode", String.class);
             method.setAccessible(true);
-            String result = (String) method.invoke(handler, uri);
+            String result = (String) method.invoke(handler, query);
 
             assertEquals(expected, result);
+        }
+    }
+
+    @Nested
+    @DisplayName("matchesPath 方法测试")
+    class MatchesPathTests {
+
+        @Test
+        @DisplayName("默认路径模式：/api/** 应该匹配 /api/users")
+        void testMatchesPath_DefaultPattern() throws Exception {
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("matchesPath", String.class);
+            method.setAccessible(true);
+
+            assertTrue((boolean) method.invoke(handler, "/api/users"));
+            assertTrue((boolean) method.invoke(handler, "/api/users/123"));
+            assertTrue((boolean) method.invoke(handler, "/api/v1/items"));
+        }
+
+        @Test
+        @DisplayName("默认路径模式：/api/** 不应该匹配 /service/users")
+        void testMatchesPath_NotMatching() throws Exception {
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("matchesPath", String.class);
+            method.setAccessible(true);
+
+            assertFalse((boolean) method.invoke(handler, "/service/users"));
+            assertFalse((boolean) method.invoke(handler, "/other/api/users"));
+        }
+
+        @Test
+        @DisplayName("路径包含非法字符但路径模式匹配，应继续处理")
+        void testMatchesPath_WithIllegalChars() throws Exception {
+            Method method = UriSanitizingHandler.class.getDeclaredMethod("matchesPath", String.class);
+            method.setAccessible(true);
+
+            assertTrue((boolean) method.invoke(handler, "/api/items|detail"));
         }
     }
 
@@ -186,6 +208,7 @@ class UriSanitizingHandlerTest {
         @DisplayName("正常情况：HttpRequest 包含查询参数中的非法字符，应被处理并传递")
         void testChannelRead_HttpRequestWithQueryParamsIllegalChars() {
             String originalUri = "/api/search?q=test|value&filter={type}";
+            // 查询参数值中的 | 和 {} 应被编码，= 和 & 应保留
             String expectedUri = "/api/search?q=test%7Cvalue&filter=%7Btype%7D";
 
             HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, originalUri);
@@ -220,7 +243,7 @@ class UriSanitizingHandlerTest {
         }
 
         @Test
-        @DisplayName("正常情况：路径包含非法字符应保持原样")
+        @DisplayName("正常情况：路径包含非法字符应保持原样（只编码查询参数）")
         void testChannelRead_PathWithIllegalChars() {
             String uri = "/api/items|detail";
 
@@ -228,8 +251,36 @@ class UriSanitizingHandlerTest {
 
             handler.channelRead(ctx, request);
 
-            // 路径中的非法字符不应被编码
+            // 路径中的非法字符不应被编码（因为没有查询参数）
             assertEquals(uri, request.uri());
+            verify(ctx).fireChannelRead(request);
+        }
+
+        @Test
+        @DisplayName("正常情况：路径包含非法字符但无查询参数，保持不变")
+        void testChannelRead_PathWithIllegalCharsNoQuery() {
+            String uri = "/api/items|detail";
+
+            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, uri);
+
+            handler.channelRead(ctx, request);
+
+            assertEquals(uri, request.uri());
+            verify(ctx).fireChannelRead(request);
+        }
+
+        @Test
+        @DisplayName("正常情况：路径包含非法字符且有查询参数，只编码查询参数")
+        void testChannelRead_PathWithIllegalCharsAndQuery() {
+            String originalUri = "/api/items|detail?q=test|value";
+            // 路径中的 | 不编码，查询参数中的 | 编码
+            String expectedUri = "/api/items|detail?q=test%7Cvalue";
+
+            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, originalUri);
+
+            handler.channelRead(ctx, request);
+
+            assertEquals(expectedUri, request.uri());
             verify(ctx).fireChannelRead(request);
         }
     }
@@ -245,11 +296,10 @@ class UriSanitizingHandlerTest {
                     "Handler 应添加 @Component 注解");
         }
 
-//        @Test
-//        @DisplayName("Handler 默认应包含 8 个非法字符映射")
-//        void testHandlerHasDefaultMappings() {
-//            assertEquals(8, handler.getMappingCount(),
-//                    "Handler 应包含 8 个默认的非法字符映射");
-//        }
+        @Test
+        @DisplayName("Handler 应启用")
+        void testHandlerIsEnabled() {
+            assertTrue(handler.isEnabled(), "Handler 默认应该启用");
+        }
     }
 }

@@ -149,39 +149,42 @@ public class RealGatewayIntegrationTest {
     class BasicUriSanitizationTests {
 
         @Test
-        @DisplayName("测试包含 | 的 URI")
+        @DisplayName("测试包含 | 的 URI 路径 - 路径保持不变（无查询参数）")
         void testUriWithPipeCharacter() throws Exception {
             String response = sendRequest("/test|path");
 
             synchronized (receivedUris) {
                 assertEquals(1, receivedUris.size());
-                assertEquals("/test%7Cpath", receivedUris.get(0));
+                // 路径中的非法字符不应被编码（没有查询参数）
+                assertEquals("/test|path", receivedUris.get(0));
             }
 
-            assertTrue(response.contains("/test%7Cpath"), "Response should contain sanitized URI");
+            assertTrue(response.contains("/test|path"), "Response should contain original URI");
         }
 
         @Test
-        @DisplayName("测试包含 { 和 } 的 URI")
+        @DisplayName("测试包含 { 和 } 的 URI 路径 - 路径保持不变（无查询参数）")
         void testUriWithCurlyBraces() throws Exception {
             String response = sendRequest("/api/user{id}");
 
             synchronized (receivedUris) {
                 assertEquals(1, receivedUris.size());
-                assertEquals("/api/user%7Bid%7D", receivedUris.get(0));
+                // 路径中的非法字符不应被编码（没有查询参数）
+                assertEquals("/api/user{id}", receivedUris.get(0));
             }
 
-            assertTrue(response.contains("/api/user%7Bid%7D"), "Response should contain sanitized URI");
+            assertTrue(response.contains("/api/user{id}"), "Response should contain original URI");
         }
 
         @Test
-        @DisplayName("测试包含查询参数的 URI")
+        @DisplayName("测试包含查询参数的 URI - 查询参数应被编码")
         void testUriWithQueryParams() throws Exception {
-            String response = sendRequest("/search?q=test|value&filter={category}");
+            String response = sendRequest("/api/search?q=test|value&filter={category}");
 
             synchronized (receivedUris) {
                 assertEquals(1, receivedUris.size());
-                assertEquals("/search?q=test%7Cvalue&filter=%7Bcategory%7D", receivedUris.get(0));
+                // 查询参数中的非法字符应被编码
+                assertEquals("/api/search?q=test%7Cvalue&filter=%7Bcategory%7D", receivedUris.get(0));
             }
 
             assertTrue(response.contains("test%7Cvalue"), "Query params should be sanitized");
@@ -206,27 +209,28 @@ public class RealGatewayIntegrationTest {
         }
 
         @Test
-        @DisplayName("测试多个非法字符混合")
-        void testMixedIllegalChars() throws Exception {
+        @DisplayName("测试路径包含非法字符 - 路径保持不变（无查询参数）")
+        void testMixedIllegalCharsInPath() throws Exception {
             String response = sendRequest("/test|path{with}|multiple[brackets]");
 
             synchronized (receivedUris) {
                 assertEquals(1, receivedUris.size());
-                assertEquals("/test%7Cpath%7Bwith%7D%7Cmultiple%5Bbrackets%5D", receivedUris.get(0));
+                // 路径中的非法字符不应被编码（没有查询参数）
+                assertEquals("/test|path{with}|multiple[brackets]", receivedUris.get(0));
             }
 
-            assertTrue(response.contains("%7C"), "Should encode | characters");
-            assertTrue(response.contains("%7B"), "Should encode { characters");
+            assertTrue(response.contains("/test|path{with}|multiple[brackets]"), "Path should remain unchanged");
         }
 
         @Test
-        @DisplayName("测试连续多个非法字符")
-        void testMultiplePipeCharacters() throws Exception {
-            String response = sendRequest("/path||with||multiple||pipes");
+        @DisplayName("测试路径和查询参数都包含非法字符 - 只编码查询参数")
+        void testPathAndQueryWithIllegalChars() throws Exception {
+            String response = sendRequest("/api/test|path?q={value}");
 
             synchronized (receivedUris) {
                 assertEquals(1, receivedUris.size());
-                assertEquals("/path%7C%7Cwith%7C%7Cmultiple%7C%7Cpipes", receivedUris.get(0));
+                // 路径不变，查询参数编码
+                assertEquals("/api/test|path?q=%7Bvalue%7D", receivedUris.get(0));
             }
         }
     }
@@ -239,21 +243,21 @@ public class RealGatewayIntegrationTest {
         @DisplayName("测试多个连续请求")
         void testMultipleRequests() throws Exception {
             String[] testUris = {
-                    "/first|request",
-                    "/second{param}",
-                    "/third[test]",
-                    "/normal/path"
+                    "/first|request?q=test",   // 查询参数应被编码
+                    "/second{param}",           // 路径保持不变
+                    "/third[test]?q=value",    // 查询参数应被编码
+                    "/normal/path"              // 正常路径
             };
 
             String[] expectedUris = {
-                    "/first%7Crequest",
-                    "/second%7Bparam%7D",
-                    "/third%5Btest%5D",
-                    "/normal/path"
+                    "/first|request?q=test",           // 查询参数编码
+                    "/second{param}",                    // 路径不变
+                    "/third[test]?q=value",             // 查询参数编码
+                    "/normal/path"                       // 正常路径
             };
 
-            for (String uris : testUris) {
-                sendRequest(uris);
+            for (String uri : testUris) {
+                sendRequest(uri);
                 Thread.sleep(50);
             }
 
@@ -261,7 +265,7 @@ public class RealGatewayIntegrationTest {
                 assertEquals(testUris.length, receivedUris.size());
                 for (int i = 0; i < expectedUris.length; i++) {
                     assertEquals(expectedUris[i], receivedUris.get(i),
-                            "Request " + (i + 1) + " should be properly sanitized");
+                            "Request " + (i + 1) + " should be properly handled");
                 }
             }
         }
