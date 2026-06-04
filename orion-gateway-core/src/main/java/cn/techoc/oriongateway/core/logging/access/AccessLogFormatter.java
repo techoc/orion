@@ -10,6 +10,9 @@ import java.util.Map;
 
 public class AccessLogFormatter {
 
+    private static final DateTimeFormatter ACCESS_LOG_FORMATTER =
+            DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z");
+
     public static String format(String pattern, Map<String, Object> vars) {
         String log = pattern;
         for (Map.Entry<String, Object> entry : vars.entrySet()) {
@@ -32,14 +35,14 @@ public class AccessLogFormatter {
     }
 
     public static String now() {
-        return DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z").format(ZonedDateTime.now());
+        return ACCESS_LOG_FORMATTER.format(ZonedDateTime.now());
     }
 
     public static String now(String zoneId) {
         if (StringUtils.hasText(zoneId)) {
             try {
                 ZoneId zone = ZoneId.of(zoneId);
-                return DateTimeFormatter.ofPattern("dd/MMM/yyyy:HH:mm:ss Z").format(ZonedDateTime.now(zone));
+                return ACCESS_LOG_FORMATTER.format(ZonedDateTime.now(zone));
             } catch (Exception e) {
                 return now();
             }

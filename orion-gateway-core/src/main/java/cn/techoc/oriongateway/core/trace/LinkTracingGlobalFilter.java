@@ -367,12 +367,7 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
 
         // 添加请求参数（用于响应阶段也展示请求的查询参数）
         if (uri.getQuery() != null && !uri.getQuery().isEmpty()) {
-            if (properties.isTraceRequestParams()) {
-                logMessage.append(String.format(" | Params: %s", uri.getQuery()));
-            } else {
-                // 即使未显式启用参数追踪，为保持响应日志的完整性也可输出
-                logMessage.append(String.format(" | Params: %s", uri.getQuery()));
-            }
+            logMessage.append(String.format(" | Params: %s", uri.getQuery()));
         }
 
         // 添加响应头
@@ -488,7 +483,6 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
         if (exchange == null) {
             // 如果找不到对应的请求信息，使用原来的日志格式
             if (body == null || body.trim().isEmpty()) {
-                body = body.replaceAll("\\r?\\n", "");
                 log.info("[{}] {} Body: [Empty Body]", requestId, phase);
             } else {
                 log.info("[{}] {} Body: {}", requestId, phase, body);
@@ -507,11 +501,7 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
 
         // 响应阶段也添加请求参数信息
         if (uri.getQuery() != null && !uri.getQuery().isEmpty()) {
-            if (properties.isTraceRequestParams()) {
-                logMessage.append(String.format(" | Params: %s", uri.getQuery()));
-            } else {
-                logMessage.append(String.format(" | Params: %s", uri.getQuery()));
-            }
+            logMessage.append(String.format(" | Params: %s", uri.getQuery()));
         }
 
         // 添加响应头

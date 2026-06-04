@@ -44,8 +44,6 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        compileUserAgentPatterns();
-
         String path = exchange.getRequest().getURI().getPath();
         if (shouldSkipPath(path)) {
             return chain.filter(exchange);

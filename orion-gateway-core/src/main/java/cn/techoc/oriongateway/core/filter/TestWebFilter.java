@@ -1,5 +1,1 @@
-package cn.techoc.oriongateway.core.filter;
-
-public class TestWebFilter {
-
-}
+// Intentionally empty - placeholder removed

@@ -32,7 +32,31 @@ build/
 ### VS Code ###
 .vscode/
 
-
+### Logs ###
 logs/
+*.log
+log/
 
+### Environment & Secrets ###
+.env
+.env.*
+*.env
+
+### Claude Code ###
+.claude/
+
+### OS Specific ###
+.DS_Store
+Thumbs.db
+._*
+
+### Build & Dependencies ###
+dependency-reduced-pom.xml
+*.jar
+!mvn/wrapper/maven-wrapper.jar
+
+### Misc ###
 .xcodemap/
+.classpath
+.project
+.settings/

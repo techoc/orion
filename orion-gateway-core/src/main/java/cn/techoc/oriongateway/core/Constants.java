@@ -30,6 +30,7 @@ public class Constants {
      * 防止泄漏到下游服务。
      */
     private static final String URI_SANITIZED_HEADER_PREFIX = "X-Orion-Uri-Sanitized-";
+    private static final String HEADER_SUFFIX = generateShortId();
     /**
      * URI 清洗标记 Header 名称（JVM 启动时动态生成，包含随机后缀）
      * <p>
@@ -40,7 +41,7 @@ public class Constants {
      *   <li>临时性：该 Header 在 WebFilter 层被消费并移除，不会泄漏到下游</li>
      * </ul>
      */
-    public static final String URI_SANITIZED_HEADER = URI_SANITIZED_HEADER_PREFIX + generateShortId();
+    public static final String URI_SANITIZED_HEADER = URI_SANITIZED_HEADER_PREFIX + HEADER_SUFFIX;
     /**
      * 原始 URI 桥接 Header 前缀（携带清洗前的原始 URI）
      * <p>
@@ -55,7 +56,7 @@ public class Constants {
      * UriSanitizingHandler 在清洗 URI 时将原始 URI 写入此 Header，
      * UriSanitizingMarkerWebFilter 读取后写入 Exchange 属性并移除该 Header。
      */
-    public static final String URI_ORIGINAL_HEADER = URI_ORIGINAL_HEADER_PREFIX + generateShortId();
+    public static final String URI_ORIGINAL_HEADER = URI_ORIGINAL_HEADER_PREFIX + HEADER_SUFFIX;
 
     /**
      * 生成短随机标识符（8 位十六进制），用于 Header 名称后缀
