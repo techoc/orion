@@ -283,6 +283,38 @@ class UriSanitizingHandlerTest {
             assertEquals(expectedUri, request.uri());
             verify(ctx).fireChannelRead(request);
         }
+
+        @Test
+        @DisplayName("正常情况：路径包含非法字符且有查询参数，只编码查询参数 参数值部分编码 部分不编码 包含 ? 包含空值 空值不含 =")
+        void testChannelRead_PathWithIllegalCharsAndQuery_PartialEncoding() {
+            String originalUri = "/api/user/114514?a=114|514&b=114%7C514&c=114?514&d=114514&e&f=9527";
+            // 路径中的 | 不编码，查询参数中的 | 和 ? 编码，保留原有的 = 和空值无 = 的情况
+            String expectedUri = "/api/user/114514?a=114%7C514&b=114%7C514&c=114%3F514&d=114514&e&f=9527";
+
+            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, originalUri);
+
+            handler.channelRead(ctx, request);
+
+            assertEquals(expectedUri, request.uri());
+            verify(ctx).fireChannelRead(request);
+        }
+
+        @Test
+        @DisplayName("正常情况：路径包含非法字符且有查询参数，只编码查询参数 参数值部分编码 部分不编码 包含 ? 包含空值 空值含 =")
+        void testChannelRead_PathWithIllegalCharsAndQuery_PartialEncoding_WithEmptyValue() {
+            String originalUri = "/api/user/114514?a=114|514&b=114%7C514&c=114?514&d=114514&e=&f=9527";
+            // 路径中的 | 不编码，查询参数中的 | 和 ? 编码，保留原有的 = 和空值无 = 的情况
+            String expectedUri = "/api/user/114514?a=114%7C514&b=114%7C514&c=114%3F514&d=114514&e=&f=9527";
+
+            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, originalUri);
+
+            handler.channelRead(ctx, request);
+
+            assertEquals(expectedUri, request.uri());
+            verify(ctx).fireChannelRead(request);
+        }
+
+
     }
 
     @Nested

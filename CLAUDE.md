@@ -4,182 +4,139 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-Orion Gateway 是一个基于 Netty 的 Spring Cloud Gateway 实现，提供安全过滤、URI 清洗、访问日志和动态配置等功能。采用 Maven
-多模块架构。
+Orion Gateway 是一个基于 Spring Cloud Gateway 的多模块 Java 网关项目，提供 URI 清洗、访问日志、链路追踪和安全过滤功能。项目采用
+Maven 构建，Java 11+。
 
 ## 模块结构
 
-- **orion-gateway-core**: 核心功能实现，包含所有处理器、过滤器和配置逻辑
-- **orion-gateway-starter**: Spring Boot Starter，提供自动配置和依赖管理
-- **orion-gateway-simple**: 简单示例应用
+```
+├── orion-gateway-core         # 核心功能模块
+│   ├── filter/                # WebFilter 实现（WAF、URI 清洗标记等）
+│   ├── logging/               # 日志相关功能
+│   │   ├── access/            # 访问日志 WebFilter 和 GlobalFilter
+│   │   └── enhance/           # Log4j2 动态配置增强
+│   ├── netty/handler/         # Netty ChannelHandler（UriSanitizingHandler）
+│   └── trace/                 # 链路追踪 GlobalFilter
+├── orion-gateway-starter      # Spring Boot 自动配置模块
+│   └── *AutoConfiguration.java  # 自动配置类
+└── orion-gateway-simple       # 示例应用（集成测试用）
+```
 
-## 构建与测试
+## 常用命令
+
+### 构建项目
 
 ```bash
-# 编译全部模块
-./mvnw clean compile
-
-# 打包
-./mvnw clean package
-
-# 运行全部测试
-./mvnw test
-
-# 运行单个模块的测试
-./mvnw -pl orion-gateway-core test
-
-# 运行单个测试类
-./mvnw -pl orion-gateway-core test -Dtest=UriSanitizingHandlerTest
-
-# 检查代码格式（Spotless）
-./mvnw spotless:check
-
-# 格式化代码
-./mvnw spotless:apply
+mvn clean package
+mvn clean package -DskipTests
 ```
 
-## 核心架构
-
-### 请求处理流程
-
-```
-客户端请求
-    ↓
-HttpServerCodec (Netty HTTP 解码)
-    ↓
-UriSanitizingHandler (URI 非法字符清洗) ← 在此插入
-    ↓
-Spring Cloud Gateway 处理链
-    ↓
-SecurityWafFilter (WAF 安全检查)
-    ↓
-AccessLogFilter (访问日志)
-    ↓
-路由转发
+### 运行测试
+```bash
+mvn test                          # 运行所有测试
+mvn test -pl orion-gateway-core   # 运行 core 模块测试
+mvn test -Dtest=ClassName         # 运行指定测试类
+mvn test -Dtest=ClassName#method  # 运行指定测试方法
 ```
 
-### 主要组件
+### 代码格式化
 
-**Netty 处理器**
+项目使用 Spotless 插件和 Palantir Java 格式规范：
 
-- `UriSanitizingHandler`: 在 Netty Pipeline 中清洗 URI 中的非法字符（`|`, `{`, `}`, `[`, `]`, `\`, `^`, `` ` ``），防止
-  `URI.create()` 抛出异常
-- 插入位置：`HttpServerCodec` 之后，Spring Cloud Gateway 处理链之前
-- 通过 `GatewayNettyPipelineAutoConfiguration` 自动注册
+```bash
+mvn spotless:apply   # 自动格式化代码
+mvn spotless:check   # 检查格式是否符合规范
+```
 
-**Web/Global 过滤器**
+## 架构关键点
 
-- `SecurityWafFilter`: Web 应用防火墙，支持 IP 黑白名单、速率限制、SQL 注入检测
-- `AccessLogWebFilter` / `AccessLogGlobalFilter`: 访问日志记录
-- `TestWebFilter`: 测试用过滤器
-- `UriSanitizingMarkerWebFilter`: 标记已清洗的 URI
+### 1. Netty Pipeline 集成
 
-**日志系统**
+UriSanitizingHandler 作为 Netty ChannelHandler 插入到 HTTP 解码器之后：
 
-- Log4j2 动态配置：运行时修改日志级别、添加 Appender
-- 支持 Console、File、RandomAccess、Async Appender
-- 异步日志优化（LMAX Disruptor）
+```java
+// 在 GatewayNettyPipelineAutoConfiguration 中注册
+channel.pipeline().
 
-**自动配置**
+addAfter(
+    "reactor.left.httpCodec",  // HttpServerCodec 的名称
+            "orion.handler",
+    uriSanitizingHandler
+    );
+```
 
-- `OrionGatewayAutoConfiguration`: 主配置，导入访问日志和链路追踪配置
-- `GatewayNettyPipelineAutoConfiguration`: Netty Pipeline 自定义配置
-- `GateWayAccessLogAutoConfiguration`: 访问日志配置
-- `TraceLogAutoConfiguration`: 链路追踪日志配置
-- `Log4j2DynamicAutoConfiguration`: 日志动态配置
+### 2. 三层过滤器架构
+```
+Netty Handler 层 (UriSanitizingHandler)
+    ↓
+WebFilter 层 (AccessLogWebFilter, UriSanitizingMarkerWebFilter, TestWebFilter)
+    ↓
+GlobalFilter 层 (SecurityWafFilter, AccessLongGlobalFilter, LinkTracingGlobalFilter)
+```
 
-## 技术栈
+### 3. 配置层次
 
-- Java 11
-- Spring Boot 2.7.18
-- Spring Cloud 2021.0.9
-- Netty (通过 Reactor Netty)
-- Log4j2 + LMAX Disruptor（异步日志）
-- Lombok
-- JSqlParser 4.6（SQL 语义分析）
-- Jackson YAML
+- **orion.gateway.uri-sanitizing.*** - URI 清洗配置
+- **orion.gateway.enable-netty-uri-sanitizing** - 启用 Netty 层 URI 清洗
+- **orion.gateway.enable-gateway-access-log** - 启用访问日志
+- **orion.logging.*** - Log4j2 动态配置
+- **orion.security.waf.*** - WAF 安全过滤器配置
 
-## 代码规范
+## 关键实现细节
 
-- 使用 Palantir Java 格式（通过 Spotless 强制执行）
-- 提交前运行 `./mvnw spotless:apply` 自动格式化
-- Maven POM 使用 sortPom 排序
+### URI 清洗桥接机制
 
-## 测试策略
+Netty Handler → WebFilter 通过动态生成的 Header 传递状态：
 
-### 单元测试
+```java
+// Constants.java 中定义
+URI_SANITIZED_HEADER ="X-Orion-Uri-Sanitized-"+
+随机后缀  // 每次 JVM 启动时生成
+        URI_ORIGINAL_HEADER = "X-Orion-Uri-Original-" + 随机后缀
+```
 
-- JUnit 5 + Mockito
-- 针对处理器和过滤器的独立测试
+**重要**：这些 Header 在 WebFilter 层被消费并移除，不会泄漏到下游服务。
 
-### 集成测试
+### 测试策略
 
-- `UriSanitizingHandlerNettyPipelineTest`: 真实 Netty Pipeline 测试
-- `RealGatewayIntegrationTest`: 完整网关集成测试
-- `GatewayTestServer` / `GatewayTestClient`: 手动测试工具
-
-### 测试场景
-
-- 基本功能正确性
-- 边界场景（空 URI、超长 URI、特殊字符组合）
-- 并发性能
-- 安全性验证（SQL 注入、XSS 等）
+- 单元测试：`MainTest`, `UriSanitizingHandlerTest`
+- 集成测试：`RealGatewayIntegrationTest`, `UriSanitizingHandlerGatewayDeepTest`
+- 测试配置：使用 `src/test/resources/application-test.yaml`
+- 测试框架：JUnit 5 + Mockito + Reactor Test
 
 ## 配置示例
 
-### application.yml (网关应用)
-
-```yaml
-spring:
-  cloud:
-    gateway:
-      routes:
-        - id: example
-          uri: http://example.com
-          predicates:
-            - Path=/api/**
-```
-
-### 自定义安全过滤器配置
-
 ```yaml
 orion:
+  gateway:
+    enable-netty-uri-sanitizing: true
+    enable-gateway-access-log: false
+    uri-sanitizing:
+      enabled: true
+      path-patterns: /api/**,/service/**
+      charset: UTF-8
   security:
     waf:
       enabled: true
       inspect-body: true
-      deny-ips:
-        - 192.168.1.100
 ```
 
-## 常见开发任务
+## 依赖说明
 
-**添加新的过滤器**
+核心依赖：
 
-1. 在 `orion-gateway-core` 中创建过滤器类，实现 `GlobalFilter` 或 `WebFilter`
-2. 在 starter 模块中添加自动配置
-3. 编写单元测试和集成测试
+- Spring Cloud Gateway 2021.0.9
+- Spring Boot 2.7.18
+- LMAX Disruptor（异步日志）
+- JSqlParser 4.6（SQL 语义分析）
+- Lombok 1.18.30
 
-**修改 URI 清洗规则**
+注意：项目排除了默认的 Spring Boot Logging，改用 Log4j2。
 
-1. 编辑 `UriSanitizingHandler.java` 中的 `ILLEGAL_CHAR_MAPPINGS`
-2. 更新相应的单元测试
-3. 验证 Netty Pipeline 集成
+## 开发注意事项
 
-**调整日志配置**
-
-1. 编辑 `Log4j2DynamicConfig.java` 支持的配置项
-2. 通过 `Log4j2DynamicProperties` 进行外部化配置
-3. 运行时可通过 API 动态修改
-
-## 已知问题与限制
-
-- Netty 严格验证需要关闭：`validateHeaders(false)`
-- URI 清洗必须在 HTTP 解码器之后执行
-- 速率限制使用内存实现，不支持集群模式
-
-## 参考文档
-
-- [UriSanitizingHandler 设计文档](./doc/UriSanitizingHandler-设计文档.md)
-- [网关测试指南](./GATEWAY_TEST_GUIDE.md)
-- [Spring Cloud Gateway 官方文档](https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway.html)
+1. **线程安全**：所有 Handler 和 Filter 必须支持并发访问
+2. **Pipeline 顺序**：Netty Handler 必须在 `reactor.left.httpCodec` 之后
+3. **Header 隔离**：内部使用的 Header（X-Orion-*）必须在返回响应前移除
+4. **配置优先级**：属性配置 > 代码默认值
+5. **测试数据**：不要在测试代码中硬编码敏感数据
