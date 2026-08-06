@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="warn" name="MyApp" packages="">
+<Configuration status="DEBUG" dest="logs/log4j2-internal.log" name="MyApp" packages="">
     <Appenders>
+        <!-- 应用日志 -->
         <RollingRandomAccessFile name="RollingRandomAccessFile" fileName="logs/app.log"
                                  filePattern="logs/$${date:yyyy-MM}/app-%d{MM-dd-yyyy}-%i.log.gz">
             <PatternLayout>
@@ -8,7 +9,7 @@
             </PatternLayout>
             <Policies>
                 <TimeBasedTriggeringPolicy />
-                <SizeBasedTriggeringPolicy size="250 MB"/>
+                <SizeBasedTriggeringPolicy size="0.5 MB"/>
             </Policies>
             <DefaultRolloverStrategy max="20"/>
         </RollingRandomAccessFile>
@@ -16,6 +17,7 @@
     <Loggers>
         <Root level="INFO">
             <AppenderRef ref="RollingRandomAccessFile"/>
+            <AppenderRef ref="Console"/>
         </Root>
     </Loggers>
 </Configuration>

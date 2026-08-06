@@ -77,3 +77,6 @@ logging:
   level:
     root: DEBUG
     cn.techoc.oriongateway: DEBUG
+
+log4j2:
+  statusFile: logs/${date:yyyy-MM-dd}/log4j2-status.log

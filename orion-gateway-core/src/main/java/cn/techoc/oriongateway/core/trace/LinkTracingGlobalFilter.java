@@ -10,6 +10,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
@@ -528,7 +529,6 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
         } else {
             logMessage.append(" | Body: [Empty Body]");
         }
-
         log.info(logMessage.toString());
     }
 
