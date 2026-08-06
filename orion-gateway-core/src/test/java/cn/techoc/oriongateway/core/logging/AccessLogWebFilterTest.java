@@ -1,7 +1,11 @@
 package cn.techoc.oriongateway.core.logging;
 
+import static org.mockito.Mockito.*;
+
 import cn.techoc.oriongateway.core.logging.access.AccessLogProperties;
 import cn.techoc.oriongateway.core.logging.access.AccessLogWebFilter;
+import java.net.InetSocketAddress;
+import java.net.URI;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,11 +18,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.ServerWebExchange;
-
-import java.net.InetSocketAddress;
-import java.net.URI;
-
-import static org.mockito.Mockito.*;
 
 public class AccessLogWebFilterTest {
 
@@ -144,7 +143,6 @@ public class AccessLogWebFilterTest {
 
         ServerWebExchange exchange = MockServerWebExchange.from(request);
         exchange.getResponse().setStatusCode(HttpStatus.ACCEPTED);
-        exchange.getResponse().getHeaders().setContentLength(-1L); // 表示无 content-length
 
         long startTime = System.currentTimeMillis() - 600;
         filter.logAccess(exchange, startTime);

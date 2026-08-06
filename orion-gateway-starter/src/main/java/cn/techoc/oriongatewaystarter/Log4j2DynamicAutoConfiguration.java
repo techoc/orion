@@ -1,13 +1,12 @@
 package cn.techoc.oriongatewaystarter;
 
 import cn.techoc.oriongateway.core.logging.enhance.*;
+import jakarta.annotation.PostConstruct;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
-
-import javax.annotation.PostConstruct;
 
 @Configuration
 @EnableConfigurationProperties(Log4j2DynamicProperties.class)

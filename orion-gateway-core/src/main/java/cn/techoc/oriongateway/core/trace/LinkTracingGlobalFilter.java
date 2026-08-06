@@ -1,5 +1,8 @@
 package cn.techoc.oriongateway.core.trace;
 
+import java.net.URI;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -10,12 +13,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
-
-import java.net.URI;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 全链路追踪过滤器，用于记录请求和响应的详细信息
@@ -190,7 +188,7 @@ public class LinkTracingGlobalFilter implements GlobalFilter, Ordered {
                     0, // 不追踪响应体时不需要限制大小
                     false, // 不追踪 Response_prefix
                     false // 不追踪 Response_suffix
-            );
+                    );
         }
         return response;
     }

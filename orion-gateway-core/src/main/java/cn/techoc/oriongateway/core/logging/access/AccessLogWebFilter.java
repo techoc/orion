@@ -1,9 +1,14 @@
 package cn.techoc.oriongateway.core.logging.access;
 
 import cn.techoc.oriongateway.core.Constants;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.util.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.lang.NonNull;
@@ -12,11 +17,6 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
-
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.util.Base64;
 
 /**
  * 通用访问日志过滤器（Starter中自动生效）
@@ -318,7 +318,8 @@ public class AccessLogWebFilter implements WebFilter {
      * @return 请求行字符串，如 "GET /api/users"
      */
     private String buildRequestLine(ServerHttpRequest request) {
-        return request.getMethodValue() + " " + request.getURI().getRawPath();
+        HttpMethod method = request.getMethod();
+        return (method != null ? method.name() : "") + " " + request.getURI().getRawPath();
     }
 
     // ==================== 时间计算相关方法 ====================

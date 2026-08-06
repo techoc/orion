@@ -1,5 +1,12 @@
 package cn.techoc.oriongateway.core.filter;
 
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -8,6 +15,7 @@ import org.springframework.core.io.buffer.DataBufferLimitException;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequestDecorator;
 import org.springframework.lang.NonNull;
@@ -15,14 +23,6 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.util.UriUtils;
 import reactor.core.publisher.Mono;
-
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Pattern;
 
 @Slf4j
 public class SecurityWafFilter implements GlobalFilter, Ordered {
@@ -61,14 +61,13 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
         }
 
         if (properties.isInspectBody() && mayHaveBody(exchange.getRequest().getMethod())) {
-            return cacheRequestBodyIfNeeded(exchange)
-                    .flatMap(cached -> {
-                        WafDecision decision = evaluateRequest(cached);
-                        if (decision.blocked) {
-                            return txBlock(cached, decision);
-                        }
-                        return chain.filter(cached);
-                    });
+            return cacheRequestBodyIfNeeded(exchange).flatMap(cached -> {
+                WafDecision decision = evaluateRequest(cached);
+                if (decision.blocked) {
+                    return txBlock(cached, decision);
+                }
+                return chain.filter(cached);
+            });
         }
 
         WafDecision decision = evaluateRequest(exchange);
@@ -113,7 +112,7 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
     @NonNull
     private Mono<Void> txBlock(@NonNull ServerWebExchange exchange, @NonNull WafDecision decision) {
         int status = properties.getBlockStatus() > 0 ? properties.getBlockStatus() : 403;
-        exchange.getResponse().setRawStatusCode(status);
+        exchange.getResponse().setStatusCode(HttpStatusCode.valueOf(status));
         exchange.getResponse().getHeaders().set(HttpHeaders.CONTENT_TYPE, properties.getBlockResponseContentType());
 
         String body = properties.getBlockResponseBody();
@@ -129,7 +128,8 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
         }
 
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-        return exchange.getResponse().writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
+        return exchange.getResponse()
+                .writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)));
     }
 
     @Override
@@ -173,7 +173,8 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
         }
 
         if (properties.isInspectQuery()) {
-            for (Map.Entry<String, List<String>> entry : exchange.getRequest().getQueryParams().entrySet()) {
+            for (Map.Entry<String, List<String>> entry :
+                    exchange.getRequest().getQueryParams().entrySet()) {
                 for (String val : entry.getValue()) {
                     WafDecision qpDecision = inspectValue(val, "query");
                     if (qpDecision.blocked) {
@@ -213,11 +214,7 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
 
         // Inspect a small set of high-signal headers (avoid Authorization by default).
         List<String> candidates = List.of(
-                HttpHeaders.USER_AGENT,
-                HttpHeaders.REFERER,
-                HttpHeaders.COOKIE,
-                "X-Forwarded-For",
-                "X-Real-IP");
+                HttpHeaders.USER_AGENT, HttpHeaders.REFERER, HttpHeaders.COOKIE, "X-Forwarded-For", "X-Real-IP");
 
         for (String name : candidates) {
             List<String> values = headers.get(name);
@@ -292,10 +289,15 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
         if (s.contains(" sleep(") || s.contains(" benchmark(") || s.contains(" pg_sleep(")) {
             score += 3;
         }
-        if (s.contains(" or ") && (s.contains("=1") || s.contains("= 1") || s.contains("'1'='1") || s.contains("\"1\"=\"1"))) {
+        if (s.contains(" or ")
+                && (s.contains("=1") || s.contains("= 1") || s.contains("'1'='1") || s.contains("\"1\"=\"1"))) {
             score += 2;
         }
-        if (s.contains(" drop ") || s.contains(" truncate ") || s.contains(" delete ") || s.contains(" update ") || s.contains(" insert ")) {
+        if (s.contains(" drop ")
+                || s.contains(" truncate ")
+                || s.contains(" delete ")
+                || s.contains(" update ")
+                || s.contains(" insert ")) {
             score += 2;
         }
 
@@ -355,7 +357,10 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
                         @Override
                         @NonNull
                         public reactor.core.publisher.Flux<org.springframework.core.io.buffer.DataBuffer> getBody() {
-                            return Mono.just(exchange.getResponse().bufferFactory().wrap(bytes)).flux();
+                            return Mono.just(exchange.getResponse()
+                                            .bufferFactory()
+                                            .wrap(bytes))
+                                    .flux();
                         }
 
                         @Override
@@ -369,8 +374,9 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
                     };
                     return exchange.mutate().request(decorator).build();
                 })
-                .onErrorResume(DataBufferLimitException.class,
-                        e -> txBlock(exchange, WafDecision.block("body_too_large")).then(Mono.<ServerWebExchange>empty()))
+                .onErrorResume(
+                        DataBufferLimitException.class, e -> txBlock(exchange, WafDecision.block("body_too_large"))
+                                .then(Mono.<ServerWebExchange>empty()))
                 .onErrorResume(t -> {
                     log.debug("WAF body cache failed; skipping body inspection", t);
                     return Mono.just(exchange);
@@ -407,7 +413,9 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
             }
         }
         InetSocketAddress remote = exchange.getRequest().getRemoteAddress();
-        return remote == null ? null : remote.getAddress() == null ? null : remote.getAddress().getHostAddress();
+        return remote == null
+                ? null
+                : remote.getAddress() == null ? null : remote.getAddress().getHostAddress();
     }
 
     private String firstIpFromHeader(String headerValue) {
@@ -543,7 +551,8 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
 
         boolean tryConsume(String key) {
             maybeCleanup();
-            Bucket bucket = buckets.computeIfAbsent(key, k -> new Bucket(props.getRateLimitCapacity(), props.getRateLimitRefillPerSecond()));
+            Bucket bucket = buckets.computeIfAbsent(
+                    key, k -> new Bucket(props.getRateLimitCapacity(), props.getRateLimitRefillPerSecond()));
             return bucket.tryConsume(1);
         }
 
@@ -586,7 +595,8 @@ public class SecurityWafFilter implements GlobalFilter, Ordered {
         }
 
         private void evictIdle(long nowNanos) {
-            long idleNanos = Duration.ofSeconds(Math.max(1, props.getRateLimitIdleEvictSeconds())).toNanos();
+            long idleNanos = Duration.ofSeconds(Math.max(1, props.getRateLimitIdleEvictSeconds()))
+                    .toNanos();
             for (Map.Entry<String, Bucket> e : buckets.entrySet()) {
                 Bucket b = e.getValue();
                 if (nowNanos - b.lastSeenNanos.get() > idleNanos) {

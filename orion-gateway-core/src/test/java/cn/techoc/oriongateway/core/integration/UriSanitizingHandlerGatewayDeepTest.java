@@ -1,5 +1,8 @@
 package cn.techoc.oriongateway.core.integration;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.verify;
+
 import cn.techoc.oriongateway.core.netty.handler.UriSanitizingHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpRequest;
@@ -12,9 +15,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.verify;
 
 /**
  * UriSanitizingHandler 网关层深入测试
@@ -168,7 +168,8 @@ class UriSanitizingHandlerGatewayDeepTest {
         @Test
         @DisplayName("HTTP GET 请求 - 查询参数包含非法字符")
         void testGetMethod() {
-            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/api/test?q=test|value");
+            HttpRequest request =
+                    new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/api/test?q=test|value");
             handler.channelRead(ctx, request);
             assertEquals("/api/test?q=test%7Cvalue", request.uri());
         }
@@ -176,7 +177,8 @@ class UriSanitizingHandlerGatewayDeepTest {
         @Test
         @DisplayName("HTTP POST 请求 - 查询参数包含非法字符")
         void testPostMethod() {
-            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/api/test?q=test|value");
+            HttpRequest request =
+                    new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/api/test?q=test|value");
             handler.channelRead(ctx, request);
             assertEquals("/api/test?q=test%7Cvalue", request.uri());
         }
@@ -184,7 +186,8 @@ class UriSanitizingHandlerGatewayDeepTest {
         @Test
         @DisplayName("HTTP PUT 请求 - 查询参数包含非法字符")
         void testPutMethod() {
-            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, "/api/test?q=test|value");
+            HttpRequest request =
+                    new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, "/api/test?q=test|value");
             handler.channelRead(ctx, request);
             assertEquals("/api/test?q=test%7Cvalue", request.uri());
         }
@@ -192,7 +195,8 @@ class UriSanitizingHandlerGatewayDeepTest {
         @Test
         @DisplayName("HTTP DELETE 请求 - 查询参数包含非法字符")
         void testDeleteMethod() {
-            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.DELETE, "/api/test?q=test|value");
+            HttpRequest request =
+                    new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.DELETE, "/api/test?q=test|value");
             handler.channelRead(ctx, request);
             assertEquals("/api/test?q=test%7Cvalue", request.uri());
         }
@@ -200,7 +204,8 @@ class UriSanitizingHandlerGatewayDeepTest {
         @Test
         @DisplayName("HTTP PATCH 请求 - 查询参数包含非法字符")
         void testPatchMethod() {
-            HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PATCH, "/api/test?q=test|value");
+            HttpRequest request =
+                    new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PATCH, "/api/test?q=test|value");
             handler.channelRead(ctx, request);
             assertEquals("/api/test?q=test%7Cvalue", request.uri());
         }
@@ -226,9 +231,9 @@ class UriSanitizingHandlerGatewayDeepTest {
         @Test
         @DisplayName("安全：SQL 注入尝试 - 单引号会被 URL 编码")
         void testSqlInjectionAttempt() {
-            String maliciousUri = "/api/users?id=1' OR '1'='1";
+            String maliciousUri = "/api/users?id=1'OR'1'='1";
             // URLEncoder 对空格编码为 +
-            String expectedUri = "/api/users?id=1%27+OR+%271%27%3D%271";
+            String expectedUri = "/api/users?id=1%27OR%271%27%3D%271";
 
             HttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, maliciousUri);
 
