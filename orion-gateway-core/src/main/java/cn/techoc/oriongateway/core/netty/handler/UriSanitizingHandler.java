@@ -268,7 +268,7 @@ public class UriSanitizingHandler extends ChannelInboundHandlerAdapter {
                 key = query.substring(pos, eqIdx);                           // key: 从当前位置到 '=' 之前
                 int valueEnd = (ampIdx >= 0) ? ampIdx : len;                 // value 的结束位置：'&' 之前或字符串末尾
                 value = query.substring(eqIdx + 1, valueEnd);                // value: '=' 之后到 '&' 之前
-                pos = valueEnd + 1;                                          // 移动指针到下一个参数的起始位置
+                pos = Math.min(valueEnd + 1, len);                           // 移动指针到下一个参数的起始位置，防止越界
                 hasEquals = true;                                            // 标记存在 '=' 号
             } else if (ampIdx >= 0) {
                 // 7b. 没有 '=' 但有 '&'：当前参数只有 key 没有 value（如 "flag&name=xx"）
@@ -289,23 +289,19 @@ public class UriSanitizingHandler extends ChannelInboundHandlerAdapter {
                 continue;
             }
 
-            // 9. 对 value 进行编码：先解码再编码，确保编码一致性
-            //    - 如果 value 已经是部分编码的（如 %E4%BD），先解码为原始字符再重新编码
-            //    - 如果 value 包含不完整的 percent-encoded 序列（如 %2），解码会抛 IllegalArgumentException
+            // 9. 对 key 和 value 进行编码：先解码再编码，确保编码一致性
+            //    - 如果已经是部分编码的（如 %E4%BD），先解码为原始字符再重新编码
+            //    - 如果包含不完整的 percent-encoded 序列（如 %2），解码会抛 IllegalArgumentException
             //      此时直接对原始值进行编码
-            String encodedValue;
-            try {
-                encodedValue = URLEncoder.encode(URLDecoder.decode(value, charset), charset);
-            } catch (IllegalArgumentException e) {
-                encodedValue = URLEncoder.encode(value, charset);
-            }
+            String encodedKey = safeEncode(key);
+            String encodedValue = safeEncode(value);
 
             // 10. 拼接参数分隔符 '&'（第一个参数前不加 '&'）
             if (!first) {
                 result.append('&');
             }
-            // 11. 拼接参数名
-            result.append(key);
+            // 11. 拼接编码后的参数名
+            result.append(encodedKey);
             // 12. 如果原始参数包含 '='，则补上 '=' 号（保留 key= 和 key 的区别）
             if (hasEquals) {
                 result.append('=');
@@ -318,6 +314,27 @@ public class UriSanitizingHandler extends ChannelInboundHandlerAdapter {
 
         // 15. 返回拼接完成的编码后查询字符串
         return result.toString();
+    }
+
+    /**
+     * 对字符串进行安全的 URL 编码：先解码再编码以确保一致性。
+     *
+     * <p>若输入包含不完整的 percent-encoded 序列导致解码失败，
+     * 则直接对原始值进行编码。
+     *
+     * @param raw 待编码的原始字符串
+     * @return 编码后的字符串
+     */
+    private String safeEncode(String raw) {
+        // 空字符串无需编解码，直接返回
+        if (raw.isEmpty()) {
+            return raw;
+        }
+        try {
+            return URLEncoder.encode(URLDecoder.decode(raw, charset), charset);
+        } catch (RuntimeException e) {
+            return URLEncoder.encode(raw, charset);
+        }
     }
 
 }
