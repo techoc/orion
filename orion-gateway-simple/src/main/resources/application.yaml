@@ -56,6 +56,10 @@ spring:
           uri: http://127.0.0.1:8081
           predicates:
             - Path=/demo/hello
+        - id: file
+          uri: http://127.0.0.1:8081
+          predicates:
+            - Path=/file/**
   application:
     name: orion-gateway-simple
 
@@ -63,8 +67,6 @@ spring:
 # Orion Gateway 配置
 orion:
   gateway:
-    # 是否启用 Netty URI 清理功能
-    enable-netty-uri-sanitizing: true
     # 是否启用网关访问日志
     enable-gateway-access-log: false
     # URI 清理配置
